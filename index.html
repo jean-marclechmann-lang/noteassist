@@ -7,7 +7,7 @@
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   :root {
-    --tp: #4B286D; --tp-l: #6B3E99; --tg: #2B8000;
+    --tp: #4B286D; --tp-l: #6B3E99; --tg: #2B8000; --tg-l: #3DB714;
     --bg: #F5F3F7; --surface: #FFFFFF; --surface2: #F0EBF5;
     --text: #1A1A1A; --muted: #6B6675; --border: #D8D0E0;
     --ai-bg: #EDE8F5; --ai-border: #C4B8D9;
@@ -22,722 +22,410 @@
       --note-bg: #1A2E1A; --note-border: #2E6E2E;
     }
   }
-  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; }
-  .header { background: var(--tp); color: white; padding: 14px 18px 12px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
-  .header-logo { width: 28px; height: 28px; background: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
-  .header-logo svg { width: 18px; height: 18px; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; max-width: 480px; margin: 0 auto; overflow: hidden; }
+  .header { background: var(--tp); color: white; padding: 12px 16px; display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .header-logo { width: 32px; height: 32px; background: white; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .header-logo svg { width: 20px; height: 20px; }
   .header-text { flex: 1; }
   .header-title { font-size: 15px; font-weight: 600; }
-  .header-sub { font-size: 11px; opacity: 0.75; margin-top: 1px; }
-  .lang-badge { font-size: 11px; background: rgba(255,255,255,0.2); border-radius: 10px; padding: 3px 8px; }
-  .progress-bar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; display: flex; gap: 4px; align-items: center; flex-shrink: 0; }
-  .tier-pip { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
-  .tier-pip.active { background: var(--tp); }
-  .tier-pip.done { background: var(--tg); }
-  .tier-label { font-size: 10px; color: var(--muted); white-space: nowrap; margin-left: 6px; }
-  .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
-  .bubble-row { display: flex; gap: 8px; align-items: flex-end; }
+  .header-sub { font-size: 11px; opacity: 0.7; }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--tg-l); flex-shrink: 0; box-shadow: 0 0 6px var(--tg-l); }
+  .lang-btn { background: rgba(255,255,255,0.15); border: none; color: white; border-radius: 12px; padding: 4px 10px; font-size: 12px; cursor: pointer; flex-shrink: 0; display: none; }
+  .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble-row { display: flex; gap: 8px; align-items: flex-end; animation: fadeUp 0.2s ease; }
   .bubble-row.user { flex-direction: row-reverse; }
-  .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--tp); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; color: white; font-weight: 600; }
-  .avatar.u { background: var(--tg); }
-  .bubble { max-width: 82%; padding: 11px 14px; border-radius: var(--r); font-size: 14px; line-height: 1.5; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--tp); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 12px; color: white; font-weight: 700; }
+  .avatar.u { background: var(--tg); font-size: 11px; }
+  .bubble { max-width: 85%; padding: 10px 14px; border-radius: var(--r); font-size: 14px; line-height: 1.55; white-space: pre-wrap; }
   .bubble.ai { background: var(--ai-bg); border: 1px solid var(--ai-border); border-bottom-left-radius: 4px; color: var(--text); }
   .bubble.user { background: var(--tp); color: white; border-bottom-right-radius: 4px; }
-  .bubble.sys { background: #f0f0f0; border: 1px solid var(--border); border-radius: var(--rs); font-size: 12px; color: var(--muted); text-align: center; max-width: 100%; padding: 8px 12px; }
-  @media (prefers-color-scheme: dark) { .bubble.sys { background: #2a2a2a; } }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 4px 38px; }
-  .chip { background: var(--surface); border: 1.5px solid var(--tp); color: var(--tp); border-radius: 20px; padding: 7px 14px; font-size: 13px; cursor: pointer; transition: all 0.15s; font-weight: 500; -webkit-tap-highlight-color: transparent; }
-  .chip:active, .chip:hover { background: var(--tp); color: white; }
-  .freeform-card { background: var(--surface); border: 1.5px solid var(--tp); border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; margin: 0 0 4px 38px; }
-  .freeform-section { display: flex; flex-direction: column; gap: 6px; }
-  .freeform-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--tp); }
-  .freeform-label.dispatch { color: var(--tg); }
-  .freeform-textarea { background: var(--bg); border: 1.5px solid var(--border); border-radius: 10px; padding: 10px 12px; font-size: 13px; font-family: inherit; color: var(--text); resize: none; min-height: 72px; line-height: 1.5; outline: none; transition: border-color 0.2s; }
-  .freeform-textarea:focus { border-color: var(--tp); }
-  .freeform-textarea::placeholder { color: var(--muted); font-style: italic; }
-  .freeform-done-btn { align-self: flex-end; background: var(--tp); color: white; border: none; border-radius: 20px; padding: 8px 20px; font-size: 13px; font-weight: 600; cursor: pointer; }
-  .note-panel { background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
-  .note-toggle { padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; }
-  .note-toggle-label { font-size: 12px; font-weight: 600; color: var(--tg); text-transform: uppercase; letter-spacing: 0.5px; }
-  .note-toggle-count { font-size: 11px; color: var(--muted); }
-  .note-content { display: none; background: var(--note-bg); border-top: 1px solid var(--note-border); padding: 12px 16px; font-size: 12px; line-height: 1.7; color: var(--text); max-height: 160px; overflow-y: auto; font-family: monospace; white-space: pre-wrap; }
-  .note-content.open { display: block; }
-  .input-row { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 12px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
-  .text-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 22px; padding: 10px 14px; font-size: 14px; color: var(--text); resize: none; outline: none; max-height: 100px; min-height: 42px; font-family: inherit; line-height: 1.4; transition: border-color 0.2s; }
-  .text-input:focus { border-color: var(--tp); }
-  .text-input::placeholder { color: var(--muted); }
-  .send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--tp); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-  .send-btn svg { width: 18px; height: 18px; fill: white; }
-  .voice-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--surface2); border: 1.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; }
-  .voice-btn.listening { background: var(--danger); border-color: var(--danger); animation: pulse 1s ease-in-out infinite; }
-  .voice-btn svg { width: 18px; height: 18px; }
-  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
-  .typing { display: flex; gap: 4px; padding: 8px 14px; align-items: center; }
-  .typing span { width: 7px; height: 7px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
+  .bubble.sys { background: transparent; border: 1px dashed var(--border); border-radius: var(--rs); font-size: 11px; color: var(--muted); text-align: center; max-width: 100%; padding: 6px 12px; }
+  .typing { display: flex; gap: 4px; padding: 4px 2px; align-items: center; min-width: 36px; }
+  .typing span { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
   .typing span:nth-child(2) { animation-delay: 0.2s; }
   .typing span:nth-child(3) { animation-delay: 0.4s; }
-  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
-  .submit-btn { width: 100%; padding: 14px; background: var(--tg); color: white; border: none; border-radius: var(--rs); font-size: 15px; font-weight: 600; cursor: pointer; margin: 8px 0 4px; }
-  .translating-banner { background: var(--surface2); border: 1px solid var(--ai-border); border-radius: var(--rs); padding: 12px 16px; font-size: 13px; color: var(--tp); text-align: center; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0);opacity:0.5} 40%{transform:translateY(-5px);opacity:1} }
+  .note-panel { background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .note-toggle { padding: 8px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; gap: 8px; }
+  .note-toggle-left { display: flex; align-items: center; gap: 6px; }
+  .note-toggle-label { font-size: 11px; font-weight: 600; color: var(--tg); text-transform: uppercase; letter-spacing: 0.5px; }
+  .note-fields-count { font-size: 11px; color: var(--muted); }
+  .note-chevron { font-size: 11px; color: var(--muted); }
+  .note-content { display: none; background: var(--note-bg); border-top: 1px solid var(--note-border); padding: 12px 16px; font-size: 12px; line-height: 1.8; color: var(--text); max-height: 180px; overflow-y: auto; font-family: "SF Mono", monospace; white-space: pre-wrap; }
+  .note-content.open { display: block; }
+  .input-area { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 12px; flex-shrink: 0; }
+  .input-row { display: flex; gap: 8px; align-items: flex-end; }
+  .text-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 22px; padding: 10px 14px; font-size: 14px; color: var(--text); resize: none; outline: none; max-height: 120px; min-height: 42px; font-family: inherit; line-height: 1.4; transition: border-color 0.2s; }
+  .text-input:focus { border-color: var(--tp); }
+  .text-input::placeholder { color: var(--muted); }
+  .voice-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--surface2); border: 1.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.2s; }
+  .voice-btn.listening { background: var(--danger); border-color: var(--danger); animation: pulse 1s ease-in-out infinite; }
+  .voice-btn.speaking { background: var(--tp); border-color: var(--tp); }
+  .voice-btn svg { width: 18px; height: 18px; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+  .send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--tp); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.2s; }
+  .send-btn:active { background: var(--tp-l); }
+  .send-btn:disabled { background: var(--border); cursor: not-allowed; }
+  .send-btn svg { width: 18px; height: 18px; fill: white; }
+  .voice-hint { font-size: 11px; color: var(--muted); text-align: center; padding: 4px 0 0; }
+  .submit-btn { width: 100%; padding: 14px; background: var(--tg); color: white; border: none; border-radius: var(--rs); font-size: 15px; font-weight: 600; cursor: pointer; margin: 8px 0 2px; transition: background 0.2s; }
+  .submit-btn:hover { background: #1e6000; }
+  .submit-btn:disabled { background: #888; cursor: not-allowed; }
+  .lang-selector { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 4px 36px; }
+  .lang-chip { background: var(--surface); border: 1.5px solid var(--tp); color: var(--tp); border-radius: 20px; padding: 8px 14px; font-size: 13px; cursor: pointer; transition: all 0.15s; font-weight: 500; }
+  .lang-chip:active, .lang-chip:hover { background: var(--tp); color: white; }
   .spin { animation: spin 1s linear infinite; display: inline-block; }
   @keyframes spin { to { transform: rotate(360deg); } }
-  .speaking-indicator { display: none; align-items: center; gap: 6px; padding: 6px 12px; background: var(--surface2); border-radius: 20px; font-size: 12px; color: var(--tp); margin: 0 0 4px 38px; }
-  .speaking-indicator.active { display: flex; }
-  .speak-wave span { width: 3px; height: 12px; background: var(--tp); border-radius: 2px; display: inline-block; animation: wave 0.8s ease-in-out infinite; margin: 0 1px; }
-  .speak-wave span:nth-child(2) { animation-delay: 0.15s; }
-  .speak-wave span:nth-child(3) { animation-delay: 0.3s; }
-  @keyframes wave { 0%,100%{height:4px} 50%{height:14px} }
 </style>
 </head>
 <body>
 
 <div class="header">
   <div class="header-logo">
-    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#4B286D" stroke-width="2.5"/><path d="M8 12h8M12 8v8" stroke="#4B286D" stroke-width="2" stroke-linecap="round"/></svg>
+    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#4B286D" stroke-width="2"/><path d="M9 9l6 3-6 3V9z" fill="#4B286D"/></svg>
   </div>
   <div class="header-text">
     <div class="header-title">NoteAssist</div>
-    <div class="header-sub">TELUS Field Services — Job Closure</div>
+    <div class="header-sub">TELUS Field Services</div>
   </div>
-  <span class="lang-badge" id="lang-badge">🌐</span>
-</div>
-
-<div class="progress-bar">
-  <div class="tier-pip" id="pip1"></div>
-  <div class="tier-pip" id="pip2"></div>
-  <div class="tier-pip" id="pip3"></div>
-  <div class="tier-pip" id="pip4"></div>
-  <div class="tier-pip" id="pip5"></div>
-  <div class="tier-pip" id="pip6"></div>
-  <span class="tier-label" id="tier-label">—</span>
+  <div class="status-dot"></div>
+  <button class="lang-btn" id="lang-btn" onclick="resetLanguage()">🌐 Change</button>
 </div>
 
 <div class="chat-area" id="chat"></div>
 
 <div class="note-panel">
   <div class="note-toggle" onclick="toggleNote()">
-    <span class="note-toggle-label">📋 Live note preview</span>
-    <span class="note-toggle-count" id="note-count">0 fields captured</span>
+    <div class="note-toggle-left">
+      <span class="note-toggle-label">📋 Note preview</span>
+      <span class="note-fields-count" id="note-count"></span>
+    </div>
+    <span class="note-chevron" id="note-chevron">▲ tap to expand</span>
   </div>
-  <div class="note-content" id="note-preview"></div>
+  <div class="note-content" id="note-preview">— your note will build here as you talk —</div>
 </div>
 
-<div class="input-row">
-  <button class="voice-btn" id="voice-btn" onclick="toggleVoice()" title="Voice input">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-      <rect x="9" y="2" width="6" height="12" rx="3"/>
-      <path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
-    </svg>
-  </button>
-  <textarea class="text-input" id="text-input" placeholder="…" rows="1"
-    onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
-  <button class="send-btn" onclick="sendAnswer()">
-    <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
-  </button>
+<div class="input-area">
+  <div class="input-row">
+    <button class="voice-btn" id="voice-btn" onclick="toggleVoice()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <rect x="9" y="2" width="6" height="12" rx="3"/>
+        <path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
+      </svg>
+    </button>
+    <textarea class="text-input" id="text-input" placeholder="Tell me about the job…" rows="1"
+      onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+    <button class="send-btn" id="send-btn" onclick="sendMessage()">
+      <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+    </button>
+  </div>
+  <div class="voice-hint">🎙 Tap mic to speak • any language welcome</div>
 </div>
 
 <script>
-// ── Language config ────────────────────────────────────────────────────────
 const LANGS = {
-  en: { label: '🇨🇦 English', speechLang: 'en-CA', voiceName: ['Samantha','Google UK English Female','Microsoft Zira'], badge: '🇨🇦 EN' },
-  fr: { label: '🇫🇷 Français', speechLang: 'fr-FR', voiceName: ['Thomas','Google français','Microsoft Julie'], badge: '🇫🇷 FR' },
-  es: { label: '🇪🇸 Español', speechLang: 'es-MX', voiceName: ['Paulina','Google español','Microsoft Helena'], badge: '🇪🇸 ES' },
-  zh: { label: '🇨🇳 普通话', speechLang: 'zh-CN', voiceName: ['Ting-Ting','Google 普通话','Microsoft Huihui'], badge: '🇨🇳 ZH' },
-  tl: { label: '🇵🇭 Filipino', speechLang: 'fil-PH', voiceName: ['Google Filipino','Microsoft Filipino'], badge: '🇵🇭 TL' },
-  pa: { label: '🇮🇳 ਪੰਜਾਬੀ', speechLang: 'pa-IN', voiceName: ['Google ਪੰਜਾਬੀ'], badge: '🇮🇳 PA' }
+  en: { label:'🇨🇦 English', speechLang:'en-CA', badge:'EN' },
+  fr: { label:'🇫🇷 Français', speechLang:'fr-FR', badge:'FR' },
+  es: { label:'🇪🇸 Español', speechLang:'es-MX', badge:'ES' },
+  zh: { label:'🇨🇳 普通话', speechLang:'zh-CN', badge:'ZH' },
+  tl: { label:'🇵🇭 Filipino', speechLang:'fil-PH', badge:'TL' },
+  pa: { label:'🇮🇳 ਪੰਜਾਬੀ', speechLang:'pa-IN', badge:'PA' }
 };
 
-// All questions translated per language
-const Q = {
-  lang_select: {
-    en: "Welcome to NoteAssist. What language would you prefer? Choose below or say the language.",
-    fr: "Bienvenue dans NoteAssist. Quelle langue préférez-vous? Choisissez ci-dessous ou dites la langue.",
-    es: "Bienvenido a NoteAssist. ¿Qué idioma prefiere? Elija a continuación o diga el idioma.",
-    zh: "欢迎使用NoteAssist。您希望使用哪种语言？请在下方选择或说出语言。",
-    tl: "Maligayang pagdating sa NoteAssist. Anong wika ang gusto mo? Pumili sa ibaba o sabihin ang wika.",
-    pa: "NoteAssist ਵਿੱਚ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ। ਤੁਸੀਂ ਕਿਹੜੀ ਭਾਸ਼ਾ ਪਸੰਦ ਕਰਦੇ ਹੋ?"
-  },
-  t1_safety: {
-    en: "Before we close this job — were there any safety incidents or hazards on site today?",
-    fr: "Avant de fermer ce travail — y a-t-il eu des incidents de sécurité ou des dangers sur le site aujourd'hui?",
-    es: "Antes de cerrar este trabajo — ¿hubo incidentes de seguridad o peligros en el sitio hoy?",
-    zh: "在我们关闭这个工单之前——今天现场有没有任何安全事故或危险？",
-    tl: "Bago natin isara ang trabahong ito — may mga insidente sa kaligtasan o panganib ba sa site ngayon?",
-    pa: "ਇਸ ਕੰਮ ਨੂੰ ਬੰਦ ਕਰਨ ਤੋਂ ਪਹਿਲਾਂ — ਕੀ ਅੱਜ ਸਾਈਟ 'ਤੇ ਕੋਈ ਸੁਰੱਖਿਆ ਘਟਨਾ ਜਾਂ ਖ਼ਤਰਾ ਹੋਇਆ?"
-  },
-  t1_customer: {
-    en: "Was the customer present on site during the work?",
-    fr: "Le client était-il présent sur le site pendant les travaux?",
-    es: "¿Estaba el cliente presente en el sitio durante el trabajo?",
-    zh: "工作期间客户是否在现场？",
-    tl: "Naroroon ba ang customer sa site habang ginagawa ang trabaho?",
-    pa: "ਕੀ ਕੰਮ ਦੌਰਾਨ ਗਾਹਕ ਸਾਈਟ 'ਤੇ ਮੌਜੂਦ ਸੀ?"
-  },
-  t2_family: {
-    en: "What type of job are you closing?",
-    fr: "Quel type de travail fermez-vous?",
-    es: "¿Qué tipo de trabajo está cerrando?",
-    zh: "您正在关闭什么类型的工单？",
-    tl: "Anong uri ng trabaho ang iyong isinasara?",
-    pa: "ਤੁਸੀਂ ਕਿਸ ਕਿਸਮ ਦਾ ਕੰਮ ਬੰਦ ਕਰ ਰਹੇ ਹੋ?"
-  },
-  t2_tech: {
-    en: "Is this a copper or fibre job?",
-    fr: "S'agit-il d'un travail sur câble cuivre ou fibre optique?",
-    es: "¿Es este un trabajo de cobre o de fibra?",
-    zh: "这是铜缆还是光纤工单？",
-    tl: "Ito ba ay copper o fibre na trabaho?",
-    pa: "ਕੀ ਇਹ ਕਾਪਰ ਜਾਂ ਫਾਈਬਰ ਦਾ ਕੰਮ ਹੈ?"
-  },
-  t3_status: {
-    en: "How did the job close?",
-    fr: "Comment le travail s'est-il terminé?",
-    es: "¿Cómo se cerró el trabajo?",
-    zh: "工单是如何关闭的？",
-    tl: "Paano natapos ang trabaho?",
-    pa: "ਕੰਮ ਕਿਵੇਂ ਬੰਦ ਹੋਇਆ?"
-  },
-  t3_incomplete_team: {
-    en: "Which team was this handed off to, and was a handoff ticket created?",
-    fr: "À quelle équipe a-t-il été transféré, et un billet de transfert a-t-il été créé?",
-    es: "¿A qué equipo se transfirió esto, y se creó un ticket de transferencia?",
-    zh: "这被移交给了哪个团队，是否创建了移交工单？",
-    tl: "Aling team ang pinasahan nito, at may nalikha bang handoff ticket?",
-    pa: "ਇਹ ਕਿਸ ਟੀਮ ਨੂੰ ਦਿੱਤਾ ਗਿਆ, ਅਤੇ ਕੀ ਹੈਂਡਆਫ ਟਿਕਟ ਬਣਾਈ ਗਈ?"
-  },
-  t3_cust_cancel: {
-    en: "What was the reason the customer cancelled?",
-    fr: "Quelle était la raison de l'annulation du client?",
-    es: "¿Cuál fue la razón por la que el cliente canceló?",
-    zh: "客户取消的原因是什么？",
-    tl: "Ano ang dahilan ng pagkansela ng customer?",
-    pa: "ਗਾਹਕ ਨੇ ਕਿਉਂ ਰੱਦ ਕੀਤਾ?"
-  },
-  t3_sys_cancel: {
-    en: "What was the system cancellation reason shown?",
-    fr: "Quel était le motif d'annulation système affiché?",
-    es: "¿Cuál fue el motivo de cancelación del sistema mostrado?",
-    zh: "系统显示的取消原因是什么？",
-    tl: "Ano ang nakitang dahilan ng pagkansela ng system?",
-    pa: "ਸਿਸਟਮ ਵਿੱਚ ਕਿਹੜਾ ਕੈਂਸਲੇਸ਼ਨ ਕਾਰਨ ਦਿਖਾਇਆ ਗਿਆ?"
-  },
-  t3_new_appt: {
-    en: "What date and time was negotiated with the customer for the new appointment?",
-    fr: "Quelle date et heure ont été convenues avec le client pour le nouveau rendez-vous?",
-    es: "¿Qué fecha y hora se acordó con el cliente para la nueva cita?",
-    zh: "与客户协商的新预约日期和时间是什么？",
-    tl: "Anong petsa at oras ang napagkasunduan sa customer para sa bagong appointment?",
-    pa: "ਨਵੀਂ ਅਪੌਇੰਟਮੈਂਟ ਲਈ ਗਾਹਕ ਨਾਲ ਕਿਹੜੀ ਤਾਰੀਖ ਅਤੇ ਸਮਾਂ ਤੈਅ ਹੋਇਆ?"
-  },
-  t4c_ped: {
-    en: "Where is the pedestal located?",
-    fr: "Où se trouve le piédestal?",
-    es: "¿Dónde está ubicado el pedestal?",
-    zh: "电缆箱位于哪里？",
-    tl: "Nasaan ang pedestal?",
-    pa: "ਪੈਡੈਸਟਲ ਕਿੱਥੇ ਸਥਿਤ ਹੈ?"
-  },
-  t4c_nid: {
-    en: "Where is the NID located on the premises?",
-    fr: "Où se trouve le NID sur les lieux?",
-    es: "¿Dónde está ubicado el NID en las instalaciones?",
-    zh: "NID在房屋哪个位置？",
-    tl: "Nasaan ang NID sa premises?",
-    pa: "NID ਇਮਾਰਤ 'ਤੇ ਕਿੱਥੇ ਹੈ?"
-  },
-  t4c_jumpers: {
-    en: "Were jumpers run at the SAC and CO?",
-    fr: "Des cavaliers ont-ils été installés au SAC et au CO?",
-    es: "¿Se instalaron jumpers en el SAC y CO?",
-    zh: "是否在SAC和CO安装了跳线？",
-    tl: "May mga jumper ba na inilagay sa SAC at CO?",
-    pa: "ਕੀ SAC ਅਤੇ CO ਵਿੱਚ ਜੰਪਰ ਲਾਏ ਗਏ?"
-  },
-  t4c_dialtone: {
-    en: "What was the last working point of dial tone?",
-    fr: "Quel était le dernier point fonctionnel de la tonalité?",
-    es: "¿Cuál fue el último punto funcional del tono de marcación?",
-    zh: "拨号音的最后工作点在哪里？",
-    tl: "Ano ang huling working point ng dial tone?",
-    pa: "ਡਾਇਲ ਟੋਨ ਦਾ ਆਖਰੀ ਕੰਮ ਕਰਨ ਵਾਲਾ ਪੁਆਇੰਟ ਕਿੱਥੇ ਸੀ?"
-  },
-  t4c_testpairs: {
-    en: "Please provide your test pair results — minimum 3 pairs required. What were the readings?",
-    fr: "Veuillez fournir vos résultats de test de paires — minimum 3 paires requises. Quelles étaient les valeurs?",
-    es: "Por favor proporcione sus resultados de pares de prueba — mínimo 3 pares requeridos. ¿Cuáles fueron las lecturas?",
-    zh: "请提供您的测试对结果——至少需要3对。读数是多少？",
-    tl: "Pakibigay ang iyong mga resulta ng test pair — minimum 3 pairs ang kailangan. Ano ang mga readings?",
-    pa: "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੇ ਟੈਸਟ ਪੇਅਰ ਨਤੀਜੇ ਦੱਸੋ — ਘੱਟੋ ਘੱਟ 3 ਪੇਅਰ ਚਾਹੀਦੇ ਹਨ।"
-  },
-  t4c_tdr: {
-    en: "Did you run a TDR? If yes, what was the result?",
-    fr: "Avez-vous effectué un test TDR? Si oui, quel était le résultat?",
-    es: "¿Realizó una prueba TDR? Si es así, ¿cuál fue el resultado?",
-    zh: "您做了TDR测试吗？如果是，结果是什么？",
-    tl: "Nagpatakbo ka ba ng TDR? Kung oo, ano ang resulta?",
-    pa: "ਕੀ ਤੁਸੀਂ TDR ਚਲਾਇਆ? ਜੇ ਹਾਂ, ਨਤੀਜਾ ਕੀ ਸੀ?"
-  },
-  t4c_dsl: {
-    en: "What were the DSL sync rates — downstream and upstream?",
-    fr: "Quels étaient les débits de synchronisation DSL — descendant et montant?",
-    es: "¿Cuáles fueron las velocidades de sincronización DSL — descendente y ascendente?",
-    zh: "DSL同步速率是多少——下行和上行？",
-    tl: "Ano ang mga DSL sync rates — downstream at upstream?",
-    pa: "DSL ਸਿੰਕ ਰੇਟ ਕੀ ਸੀ — ਡਾਊਨਸਟ੍ਰੀਮ ਅਤੇ ਅਪਸਟ੍ਰੀਮ?"
-  },
-  t4c_no_test_reason: {
-    en: "Which of the following explains why tests couldn't be completed?",
-    fr: "Lequel des éléments suivants explique pourquoi les tests n'ont pas pu être complétés?",
-    es: "¿Cuál de los siguientes explica por qué no se pudieron completar las pruebas?",
-    zh: "以下哪项解释了为什么无法完成测试？",
-    tl: "Alin sa mga sumusunod ang nagpapaliwanag kung bakit hindi nakumpleto ang mga test?",
-    pa: "ਹੇਠਾਂ ਦਿੱਤੇ ਵਿੱਚੋਂ ਕਿਹੜਾ ਦੱਸਦਾ ਹੈ ਕਿ ਟੈਸਟ ਕਿਉਂ ਪੂਰੇ ਨਹੀਂ ਹੋ ਸਕੇ?"
-  },
-  t4f_drop: {
-    en: "What type of drop was used?",
-    fr: "Quel type de câble de branchement a été utilisé?",
-    es: "¿Qué tipo de acometida se utilizó?",
-    zh: "使用了什么类型的引入线？",
-    tl: "Anong uri ng drop ang ginamit?",
-    pa: "ਕਿਹੜੀ ਕਿਸਮ ਦਾ ਡ੍ਰੌਪ ਵਰਤਿਆ ਗਿਆ?"
-  },
-  t4f_infra: {
-    en: "What was the infrastructure type?",
-    fr: "Quel était le type d'infrastructure?",
-    es: "¿Cuál era el tipo de infraestructura?",
-    zh: "基础设施类型是什么？",
-    tl: "Ano ang uri ng imprastraktura?",
-    pa: "ਬੁਨਿਆਦੀ ਢਾਂਚੇ ਦੀ ਕਿਸਮ ਕੀ ਸੀ?"
-  },
-  t4f_ped: {
-    en: "Where is the pedestal or NAP located?",
-    fr: "Où se trouve le piédestal ou le NAP?",
-    es: "¿Dónde está ubicado el pedestal o NAP?",
-    zh: "电缆箱或NAP位于哪里？",
-    tl: "Nasaan ang pedestal o NAP?",
-    pa: "ਪੈਡੈਸਟਲ ਜਾਂ NAP ਕਿੱਥੇ ਹੈ?"
-  },
-  t4f_jumpers: {
-    en: "Were jumpers run?",
-    fr: "Des cavaliers ont-ils été installés?",
-    es: "¿Se instalaron jumpers?",
-    zh: "是否安装了跳线？",
-    tl: "May mga jumper ba na inilagay?",
-    pa: "ਕੀ ਜੰਪਰ ਲਾਏ ਗਏ?"
-  },
-  t4f_light: {
-    en: "What were the light levels recorded at the ONT?",
-    fr: "Quels étaient les niveaux de lumière enregistrés à l'ONT?",
-    es: "¿Cuáles fueron los niveles de luz registrados en el ONT?",
-    zh: "在ONT记录的光功率是多少？",
-    tl: "Ano ang mga light level na naitala sa ONT?",
-    pa: "ONT 'ਤੇ ਲਾਈਟ ਲੈਵਲ ਕੀ ਦਰਜ ਕੀਤੇ ਗਏ?"
-  },
-  t4f_fdh: {
-    en: "What is the FDH number and assignment number?",
-    fr: "Quel est le numéro FDH et le numéro d'assignation?",
-    es: "¿Cuál es el número FDH y el número de asignación?",
-    zh: "FDH编号和分配编号是什么？",
-    tl: "Ano ang FDH number at assignment number?",
-    pa: "FDH ਨੰਬਰ ਅਤੇ ਅਸਾਈਨਮੈਂਟ ਨੰਬਰ ਕੀ ਹੈ?"
-  },
-  t5_billing: {
-    en: "Were there any charges applied to the customer for today's work?",
-    fr: "Des frais ont-ils été facturés au client pour les travaux d'aujourd'hui?",
-    es: "¿Se aplicaron cargos al cliente por el trabajo de hoy?",
-    zh: "今天的工作是否向客户收取了费用？",
-    tl: "May mga singil ba na inilapat sa customer para sa trabahong ngayon?",
-    pa: "ਕੀ ਅੱਜ ਦੇ ਕੰਮ ਲਈ ਗਾਹਕ ਤੋਂ ਕੋਈ ਚਾਰਜ ਲਿਆ ਗਿਆ?"
-  },
-  t5_billing_detail: {
-    en: "Please describe the charges. Were they clearly explained to the customer?",
-    fr: "Veuillez décrire les frais. Ont-ils été clairement expliqués au client?",
-    es: "Por favor describa los cargos. ¿Se explicaron claramente al cliente?",
-    zh: "请描述费用。是否向客户清楚说明了？",
-    tl: "Pakilarawan ang mga singil. Malinaw ba itong ipinaliwanag sa customer?",
-    pa: "ਕਿਰਪਾ ਕਰਕੇ ਚਾਰਜਾਂ ਦਾ ਵਰਣਨ ਕਰੋ। ਕੀ ਇਹ ਗਾਹਕ ਨੂੰ ਸਪੱਸ਼ਟ ਤੌਰ 'ਤੇ ਸਮਝਾਏ ਗਏ?"
-  },
-  t5_signature: {
-    en: "Did the customer sign off on the charges?",
-    fr: "Le client a-t-il signé pour les frais?",
-    es: "¿Firmó el cliente los cargos?",
-    zh: "客户是否签署了费用确认？",
-    tl: "Pumirma ba ang customer sa mga singil?",
-    pa: "ਕੀ ਗਾਹਕ ਨੇ ਚਾਰਜਾਂ 'ਤੇ ਦਸਤਖ਼ਤ ਕੀਤੇ?"
-  },
-  t5_no_charge: {
-    en: "Was the customer informed there are no charges for today's visit?",
-    fr: "Le client a-t-il été informé qu'il n'y a pas de frais pour la visite d'aujourd'hui?",
-    es: "¿Se informó al cliente que no hay cargos por la visita de hoy?",
-    zh: "是否告知客户今天的上门服务不收费？",
-    tl: "Naabisuhan ba ang customer na walang singil para sa visit ngayon?",
-    pa: "ਕੀ ਗਾਹਕ ਨੂੰ ਦੱਸਿਆ ਗਿਆ ਕਿ ਅੱਜ ਦੀ ਵਿਜ਼ਿਟ ਲਈ ਕੋਈ ਚਾਰਜ ਨਹੀਂ ਹੈ?"
-  },
-  freeform_intro: {
-    en: "Almost done! Two last things — speak or type in any language.",
-    fr: "Presque terminé! Deux dernières choses — parlez ou écrivez dans n'importe quelle langue.",
-    es: "¡Casi listo! Dos cosas más — habla o escribe en cualquier idioma.",
-    zh: "快完成了！最后两件事——用任何语言说或写。",
-    tl: "Halos tapos na! Dalawang huling bagay — magsalita o mag-type sa anumang wika.",
-    pa: "ਲਗਭਗ ਹੋ ਗਿਆ! ਆਖਰੀ ਦੋ ਗੱਲਾਂ — ਕਿਸੇ ਵੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲੋ ਜਾਂ ਟਾਈਪ ਕਰੋ।"
-  },
-  complete: {
-    en: "Your job note is complete and translated to English. Tap the preview to review before submitting.",
-    fr: "Votre note de travail est complète et traduite en anglais. Appuyez sur l'aperçu pour vérifier avant de soumettre.",
-    es: "Su nota de trabajo está completa y traducida al inglés. Toque la vista previa para revisar antes de enviar.",
-    zh: "您的工单记录已完成并翻译成英文。点击预览在提交前查看。",
-    tl: "Kumpleto na ang iyong job note at naisalin sa Ingles. I-tap ang preview bago isumite.",
-    pa: "ਤੁਹਾਡਾ ਜੌਬ ਨੋਟ ਮੁਕੰਮਲ ਹੈ ਅਤੇ ਅੰਗਰੇਜ਼ੀ ਵਿੱਚ ਅਨੁਵਾਦ ਕੀਤਾ ਗਿਆ ਹੈ।"
-  },
-  submitted: {
-    en: "Note submitted. Have a safe rest of your shift!",
-    fr: "Note soumise. Bonne fin de quart de travail!",
-    es: "Nota enviada. ¡Que tenga un turno seguro!",
-    zh: "记录已提交。祝您班次平安！",
-    tl: "Naisumite na ang note. Mag-ingat sa natitirang oras ng iyong shift!",
-    pa: "ਨੋਟ ਜਮ੍ਹਾਂ ਕਰ ਦਿੱਤਾ ਗਿਆ। ਬਾਕੀ ਸ਼ਿਫਟ ਸੁਰੱਖਿਅਤ ਰਹੋ!"
-  }
+const OPENINGS = {
+  en: "Perfect! I'm here to help you close your ticket — won't take long.\n\nTell me about the job today. What were you out there for?",
+  fr: "Parfait! Je suis là pour t'aider à fermer ton billet.\n\nParle-moi du travail aujourd'hui. C'était quoi le mandat?",
+  es: "¡Perfecto! Estoy aquí para ayudarte a cerrar tu ticket.\n\n¿Cuéntame sobre el trabajo de hoy. ¿Para qué estabas ahí?",
+  zh: "太好了！我来帮您关闭工单。\n\n跟我说说今天的工作吧。您今天是去做什么的？",
+  tl: "Ayos! Nandito ako para tulungan kang isara ang iyong ticket.\n\nKwentuhan mo ako tungkol sa trabaho ngayon. Ano ang ginawa mo doon?",
+  pa: "ਵਧੀਆ! ਮੈਂ ਤੁਹਾਡੀ ਟਿਕਟ ਬੰਦ ਕਰਨ ਵਿੱਚ ਮਦਦ ਕਰਨ ਲਈ ਇੱਥੇ ਹਾਂ।\n\nਮੈਨੂੰ ਅੱਜ ਦੇ ਕੰਮ ਬਾਰੇ ਦੱਸੋ।"
 };
 
-// Chips translated
-const CHIPS = {
-  lang_select: { en:["🇨🇦 English","🇫🇷 Français","🇪🇸 Español","🇨🇳 普通话","🇵🇭 Filipino","🇮🇳 ਪੰਜਾਬੀ"] },
-  t1_safety:   { en:["No incidents","Yes — incident occurred"], fr:["Aucun incident","Oui — incident survenu"], es:["Sin incidentes","Sí — ocurrió un incidente"], zh:["无事故","是 — 发生了事故"], tl:["Walang insidente","Oo — may nangyaring insidente"], pa:["ਕੋਈ ਘਟਨਾ ਨਹੀਂ","ਹਾਂ — ਘਟਨਾ ਹੋਈ"] },
-  t1_customer: { en:["Yes, present","No, no one home","Someone else"], fr:["Oui, présent","Non, personne","Quelqu'un d'autre"], es:["Sí, presente","No, nadie en casa","Otra persona"], zh:["是，在场","否，无人在家","其他人在场"], tl:["Oo, naroroon","Hindi, walang tao","May ibang tao"], pa:["ਹਾਂ, ਮੌਜੂਦ ਸੀ","ਨਹੀਂ, ਕੋਈ ਨਹੀਂ ਸੀ","ਕੋਈ ਹੋਰ ਸੀ"] },
-  t2_family:   { en:["Install","Repair"], fr:["Installation","Réparation"], es:["Instalación","Reparación"], zh:["安装","维修"], tl:["Install","Repair"], pa:["ਇੰਸਟਾਲ","ਮੁਰੰਮਤ"] },
-  t2_tech:     { en:["Copper","Fibre"], fr:["Cuivre","Fibre"], es:["Cobre","Fibra"], zh:["铜缆","光纤"], tl:["Copper","Fibre"], pa:["ਕਾਪਰ","ਫਾਈਬਰ"] },
-  t3_status:   { en:["Completed ✓","Incomplete — handed off","Cancelled by customer","Cancelled by system","New appointment"], fr:["Complété ✓","Incomplet — transféré","Annulé par le client","Annulé par le système","Nouveau rendez-vous"], es:["Completado ✓","Incompleto — transferido","Cancelado por cliente","Cancelado por sistema","Nueva cita"], zh:["已完成 ✓","未完成 — 已移交","客户取消","系统取消","重新预约"], tl:["Natapos ✓","Hindi tapos — ibinigay","Kansela ng customer","Kansela ng system","Bagong appointment"], pa:["ਮੁਕੰਮਲ ✓","ਅਧੂਰਾ — ਦਿੱਤਾ ਗਿਆ","ਗਾਹਕ ਨੇ ਰੱਦ ਕੀਤਾ","ਸਿਸਟਮ ਨੇ ਰੱਦ ਕੀਤਾ","ਨਵੀਂ ਅਪੌਇੰਟਮੈਂਟ"] },
-  t4c_nid:     { en:["Back of house","Front of house","Side of house","Utility room"], fr:["Arrière","Avant","Côté","Salle technique"], es:["Parte trasera","Parte delantera","Lateral","Cuarto de servicios"], zh:["房屋后面","房屋前面","房屋侧面","设备间"], tl:["Likod ng bahay","Harap ng bahay","Gilid ng bahay","Utility room"], pa:["ਮਕਾਨ ਦੇ ਪਿੱਛੇ","ਮਕਾਨ ਦੇ ਅੱਗੇ","ਮਕਾਨ ਦੇ ਪਾਸੇ","ਯੂਟਿਲਟੀ ਰੂਮ"] },
-  t4c_jumpers: { en:["Yes — SAC and CO","SAC only","CO only","No jumpers"], fr:["Oui — SAC et CO","SAC seulement","CO seulement","Aucun cavalier"], es:["Sí — SAC y CO","Solo SAC","Solo CO","Sin jumpers"], zh:["是 — SAC和CO","仅SAC","仅CO","无跳线"], tl:["Oo — SAC at CO","SAC lang","CO lang","Walang jumper"], pa:["ਹਾਂ — SAC ਅਤੇ CO","ਸਿਰਫ SAC","ਸਿਰਫ CO","ਕੋਈ ਜੰਪਰ ਨਹੀਂ"] },
-  t4c_dialtone:{ en:["SAC","CO","NID","PED","No dial tone"], fr:["SAC","CO","NID","PED","Pas de tonalité"], es:["SAC","CO","NID","PED","Sin tono"], zh:["SAC","CO","NID","PED","无拨号音"], tl:["SAC","CO","NID","PED","Walang dial tone"], pa:["SAC","CO","NID","PED","ਕੋਈ ਡਾਇਲ ਟੋਨ ਨਹੀਂ"] },
-  t4c_no_test_reason: { en:["No TDR meter","No laptop","Both missing","Equipment fault","Other"], fr:["Pas de TDR","Pas d'ordinateur","Les deux","Panne d'équipement","Autre"], es:["Sin TDR","Sin laptop","Ambos","Fallo de equipo","Otro"], zh:["无TDR仪器","无笔记本","两者都没有","设备故障","其他"], tl:["Walang TDR meter","Walang laptop","Pareho","Sira ang equipment","Iba"], pa:["TDR ਮੀਟਰ ਨਹੀਂ","ਲੈਪਟਾਪ ਨਹੀਂ","ਦੋਵੇਂ ਨਹੀਂ","ਸਾਜ਼ੋ ਖਰਾਬ","ਹੋਰ"] },
-  t4f_drop:    { en:["Aerial","Underground","Existing reused"], fr:["Aérien","Souterrain","Existant réutilisé"], es:["Aéreo","Subterráneo","Existente reutilizado"], zh:["架空","地埋","复用现有"], tl:["Aerial","Underground","Existing reused"], pa:["ਹਵਾਈ","ਭੂਮੀਗਤ","ਮੌਜੂਦਾ ਦੁਬਾਰਾ ਵਰਤਿਆ"] },
-  t4f_infra:   { en:["GPON","Active Ethernet","Other"], fr:["GPON","Ethernet actif","Autre"], es:["GPON","Ethernet activo","Otro"], zh:["GPON","主动以太网","其他"], tl:["GPON","Active Ethernet","Iba"], pa:["GPON","ਐਕਟਿਵ ਈਥਰਨੈੱਟ","ਹੋਰ"] },
-  t4f_jumpers: { en:["Yes","No — not required"], fr:["Oui","Non — pas requis"], es:["Sí","No — no requerido"], zh:["是","否 — 不需要"], tl:["Oo","Hindi — hindi kailangan"], pa:["ਹਾਂ","ਨਹੀਂ — ਲੋੜ ਨਹੀਂ"] },
-  t4f_light:   { en:["Within range","Out of range","Could not test"], fr:["Dans la plage","Hors plage","Impossible à tester"], es:["En rango","Fuera de rango","No se pudo probar"], zh:["在范围内","超出范围","无法测试"], tl:["Sa loob ng range","Labas ng range","Hindi matest"], pa:["ਰੇਂਜ ਵਿੱਚ","ਰੇਂਜ ਤੋਂ ਬਾਹਰ","ਟੈਸਟ ਨਹੀਂ ਹੋ ਸਕਿਆ"] },
-  t5_billing:  { en:["No charges","Yes — charges apply"], fr:["Aucun frais","Oui — des frais"], es:["Sin cargos","Sí — hay cargos"], zh:["无费用","是 — 有费用"], tl:["Walang singil","Oo — may singil"], pa:["ਕੋਈ ਚਾਰਜ ਨਹੀਂ","ਹਾਂ — ਚਾਰਜ ਹਨ"] },
-  t5_signature:{ en:["Yes — signed","Refused","Not present"], fr:["Oui — signé","Refusé","Absent"], es:["Sí — firmado","Rechazó","No presente"], zh:["是 — 已签署","拒绝签署","不在场"], tl:["Oo — pumirma","Tumanggi","Wala"], pa:["ਹਾਂ — ਦਸਤਖ਼ਤ ਕੀਤੇ","ਇਨਕਾਰ","ਮੌਜੂਦ ਨਹੀਂ"] },
-  t5_no_charge:{ en:["Yes — confirmed","Customer absent"], fr:["Oui — confirmé","Client absent"], es:["Sí — confirmado","Cliente ausente"], zh:["是 — 已确认","客户不在"], tl:["Oo — nakumpirma","Wala ang customer"], pa:["ਹਾਂ — ਪੁਸ਼ਟੀ ਕੀਤੀ","ਗਾਹਕ ਗੈਰਹਾਜ਼ਰ"] }
-};
-
-// ── State ──────────────────────────────────────────────────────────────────
 const state = {
-  lang: null, jobFamily: null, techType: null, closureStatus: null,
-  noteFields: {}, listening: false, recognition: null, speaking: false, complete: false
+  lang: null,
+  conversationHistory: [],
+  noteText: '',
+  listening: false,
+  recognition: null,
+  waiting: false,
+  complete: false,
+  started: false  // prevents double-start
 };
 
-const FLOW_SEQUENCE = ['t1_safety','t1_customer','t2_family','t2_tech','t3_status'];
-let flowQueue = [...FLOW_SEQUENCE];
-let pendingFlowKey = null;
+function buildSystemPrompt(lang) {
+  const langName = { en:'English', fr:'French', es:'Spanish', zh:'Mandarin Chinese', tl:'Filipino/Tagalog', pa:'Punjabi' }[lang] || 'English';
+  return `You are NoteAssist, a friendly and helpful AI assistant for TELUS field technicians. Your job is to help techs close their work orders by having a natural, warm conversation — like a knowledgeable colleague who genuinely wants to help them finish their day properly.
 
-function L(key) { return Q[key]?.[state.lang] || Q[key]?.en || ''; }
-function C(key) { return CHIPS[key]?.[state.lang] || CHIPS[key]?.en || null; }
-function getNextFlow() { return flowQueue.length > 0 ? flowQueue.shift() : null; }
+PERSONALITY:
+- Warm, encouraging, and conversational — never robotic or form-like
+- Speak in ${langName}. Always respond in ${langName} throughout the entire conversation.
+- Keep responses concise — this is a mobile app, techs are in the field
+- Acknowledge what they tell you before asking the next thing
+- If something sounds incomplete or unclear, gently ask for more detail
+- Never fire multiple questions at once — ask one thing at a time naturally
+- Use casual, friendly language — "Got it!", "Nice work!", "Good to know" etc.
+- If a tech seems frustrated or rushed, be understanding and keep it brief
 
-// ── TTS ────────────────────────────────────────────────────────────────────
-function speak(text, onEnd) {
-  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
-  window.speechSynthesis.cancel();
-  const utt = new SpeechSynthesisUtterance(text);
-  const langConf = LANGS[state.lang || 'en'];
-  utt.lang = langConf.speechLang;
-  // Try to find a matching voice
-  const voices = window.speechSynthesis.getVoices();
-  const preferred = voices.find(v => langConf.voiceName.some(n => v.name.includes(n)));
-  const langMatch = voices.find(v => v.lang.startsWith(langConf.speechLang.split('-')[0]));
-  if (preferred) utt.voice = preferred;
-  else if (langMatch) utt.voice = langMatch;
-  utt.rate = 0.95;
-  utt.onend = () => { state.speaking=false; onEnd && onEnd(); };
-  utt.onerror = () => { state.speaking=false; onEnd && onEnd(); };
-  state.speaking = true;
-  window.speechSynthesis.speak(utt);
+YOUR GOAL:
+Have a natural conversation that collects ALL of the following information for a complete TELUS job note. You don't need to collect them in order — follow the natural flow of the conversation.
+
+REQUIRED INFORMATION (collect all that apply):
+1. Safety: Any incidents or hazards on site?
+2. Customer: Was customer present? Satisfied?
+3. Job type: Install or Repair? Copper or Fibre?
+4. Completion status: Completed / Incomplete-handoff / Customer cancelled / System cancelled / New appointment negotiated
+5. If COMPLETED:
+   - For COPPER: pedestal location, NID location, jumpers at SAC and CO, last working point of dial tone, minimum 3 test pair results, DSL sync rates downstream and upstream, TDR result if applicable
+   - For FIBRE: type of drop (aerial/underground), infrastructure type (GPON/Active Ethernet), pedestal or NAP location, jumpers run, light levels at ONT, FDH number and assignment number
+6. If NOT COMPLETED: reason for non-completion, handoff team if applicable, next steps or follow-up required
+7. Billing: Any charges applied? Clearly explained to customer? Customer signature obtained?
+8. Field notes: Anything unusual found, special conditions, workarounds used
+9. Dispatch or future tech instructions: Anything the next person needs to know before attending
+
+IMPORTANT NOTES:
+- For test results, if the tech couldn't test, always ask why and document the reason clearly
+- If they mention a bad pair, ask for TDR results or document why testing wasn't possible
+- Always confirm billing even if they say there were no charges — confirm the customer was informed
+- Keep the conversation feeling natural — don't make it feel like a checklist even though you're working through one
+
+COMPLETION:
+When you have collected all required information (or confirmed it's not applicable), wrap up warmly and output the compiled note.
+Signal completion by writing exactly: NOTEASSIST_COMPLETE
+Then immediately write the full compiled note in professional Canadian English — regardless of what language the conversation was in.
+
+NOTE FORMAT:
+JOB TYPE: [type] — [copper/fibre]
+STATUS: [completion status]
+SAFETY: [safety summary]
+CUSTOMER: [customer presence and satisfaction]
+[All relevant technical fields based on job type]
+BILLING: [billing summary]
+FIELD NOTES: [any additional context]
+DISPATCH / FUTURE TECH INSTRUCTIONS: [handoff notes if any]`;
 }
 
-// ── Flow injection ─────────────────────────────────────────────────────────
-function injectFlowsAfterStatus(status) {
-  const reasonMap = { incomplete:['t3_incomplete_team'], cust_cancel:['t3_cust_cancel'], sys_cancel:['t3_sys_cancel'], new_appt:['t3_new_appt'] };
-  if (status !== 'completed') { flowQueue = [...(reasonMap[status]||[])]; return; }
-  const t4 = state.techType === 'fibre'
-    ? ['t4f_drop','t4f_infra','t4f_ped','t4f_jumpers','t4f_light','t4f_fdh']
-    : ['t4c_ped','t4c_nid','t4c_jumpers','t4c_dialtone','t4c_testpairs','t4c_tdr','t4c_dsl'];
-  flowQueue = [...t4, 't5_billing'];
+// ── Claude API ─────────────────────────────────────────────────────────────
+async function callClaude(userMessage) {
+  state.conversationHistory.push({ role: 'user', content: userMessage });
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1024,
+      system: buildSystemPrompt(state.lang),
+      messages: state.conversationHistory
+    })
+  });
+  const data = await res.json();
+  const msg = data.content[0].text;
+  state.conversationHistory.push({ role: 'assistant', content: msg });
+  return msg;
 }
 
-// ── Note builder ───────────────────────────────────────────────────────────
-function buildNote(f) {
-  f = f || state.noteFields;
-  const lines = [];
-  const job = [f.job_family, f.tech_type].filter(Boolean).map(s=>s.toUpperCase()).join(' / ');
-  if (job) lines.push(`JOB TYPE: ${job}`);
-  if (f.closure_status) lines.push(`STATUS: ${f.closure_status}`);
-  lines.push('');
-  if (f.safety_incident) lines.push(`SAFETY: ${f.safety_incident}`);
-  if (f.customer_present) lines.push(`CUSTOMER: ${f.customer_present}`);
-  if (f.handoff_team) lines.push(`HANDOFF: ${f.handoff_team}`);
-  if (f.cancel_reason) lines.push(`CANCELLATION REASON: ${f.cancel_reason}`);
-  if (f.sys_cancel_reason) lines.push(`SYSTEM CANCEL: ${f.sys_cancel_reason}`);
-  if (f.new_appt_details) lines.push(`NEW APPOINTMENT: ${f.new_appt_details}`);
-  if (f.ped_location) lines.push(`PED LOCATION: ${f.ped_location}`);
-  if (f.nid_location) lines.push(`NID LOCATION: ${f.nid_location}`);
-  if (f.jumpers) lines.push(`JUMPERS: ${f.jumpers}`);
-  if (f.last_dialtone) lines.push(`LAST WORKING DIAL TONE: ${f.last_dialtone}`);
-  if (f.test_pair_results) lines.push(`TEST PAIR RESULTS: ${f.test_pair_results}`);
-  if (f.tdr_result) lines.push(`TDR: ${f.tdr_result}`);
-  if (f.dsl_rates) lines.push(`DSL RATES: ${f.dsl_rates}`);
-  if (f.no_test_reason) lines.push(`TESTS NOT COMPLETED — REASON: ${f.no_test_reason}`);
-  if (f.drop_type) lines.push(`DROP TYPE: ${f.drop_type}`);
-  if (f.infra_type) lines.push(`INFRASTRUCTURE: ${f.infra_type}`);
-  if (f.light_levels) lines.push(`LIGHT LEVELS: ${f.light_levels}`);
-  if (f.fdh_assignment) lines.push(`FDH / ASSIGNMENT: ${f.fdh_assignment}`);
-  lines.push('');
-  if (f.billing_charges) lines.push(`BILLING: ${f.billing_charges}`);
-  if (f.billing_detail) lines.push(`CHARGE DETAIL: ${f.billing_detail}`);
-  if (f.customer_signature) lines.push(`CUSTOMER SIGNATURE: ${f.customer_signature}`);
-  if (f.no_charge_confirmation) lines.push(`NO CHARGE CONFIRMED: ${f.no_charge_confirmation}`);
-  if (f.field_notes || f.dispatch_instructions) {
-    lines.push('');
-    if (f.field_notes) lines.push(`FIELD NOTES:\n${f.field_notes}`);
-    if (f.dispatch_instructions) lines.push(`DISPATCH / FUTURE TECH INSTRUCTIONS:\n${f.dispatch_instructions}`);
-  }
-  return lines.filter((l,i,a)=>!(l===''&&(a[i-1]===''||i===0))).join('\n').trim();
+function extractNote(msg) {
+  if (!msg.includes('NOTEASSIST_COMPLETE')) return null;
+  return msg.split('NOTEASSIST_COMPLETE')[1].trim();
 }
 
-function updateNote() {
-  const note = buildNote();
-  document.getElementById('note-preview').textContent = note || '—';
-  const count = Object.keys(state.noteFields).length;
-  document.getElementById('note-count').textContent = `${count} field${count!==1?'s':''} captured`;
-  if (count > 0) document.getElementById('note-preview').classList.add('open');
+function getPreMessage(msg) {
+  if (!msg.includes('NOTEASSIST_COMPLETE')) return msg;
+  return msg.split('NOTEASSIST_COMPLETE')[0].trim();
+}
+
+// ── Note panel ─────────────────────────────────────────────────────────────
+function updateNoteDisplay(text) {
+  const el = document.getElementById('note-preview');
+  el.textContent = text;
+  el.classList.add('open');
+  document.getElementById('note-chevron').textContent = '▼ tap to collapse';
+  const lines = text.split('\n').filter(l => l.includes(':'));
+  document.getElementById('note-count').textContent = `${lines.length} fields`;
+}
+
+function toggleNote() {
+  const el = document.getElementById('note-preview');
+  el.classList.toggle('open');
+  document.getElementById('note-chevron').textContent = el.classList.contains('open') ? '▼ tap to collapse' : '▲ tap to expand';
 }
 
 // ── Chat ───────────────────────────────────────────────────────────────────
 function addBubble(text, type) {
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
-  row.className = `bubble-row ${type==='user'?'user':''}`;
-  if (type==='sys') row.innerHTML=`<div class="bubble sys">${text}</div>`;
-  else { const av=type==='user'?`<div class="avatar u">T</div>`:`<div class="avatar">N</div>`; row.innerHTML=`${av}<div class="bubble ${type}">${text}</div>`; }
+  row.className = `bubble-row ${type === 'user' ? 'user' : ''}`;
+  if (type === 'sys') {
+    row.innerHTML = `<div class="bubble sys">${text}</div>`;
+  } else {
+    const av = type === 'user' ? `<div class="avatar u">T</div>` : `<div class="avatar">N</div>`;
+    row.innerHTML = `${av}<div class="bubble ${type}">${text}</div>`;
+  }
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
+
 function showTyping() {
-  const chat=document.getElementById('chat');
-  const row=document.createElement('div');
-  row.id='typing-indicator'; row.className='bubble-row';
-  row.innerHTML=`<div class="avatar">N</div><div class="bubble ai"><div class="typing"><span></span><span></span><span></span></div></div>`;
-  chat.appendChild(row); chat.scrollTop=chat.scrollHeight;
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.id = 'typing-row'; row.className = 'bubble-row';
+  row.innerHTML = `<div class="avatar">N</div><div class="bubble ai"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
 }
-function removeTyping() { const el=document.getElementById('typing-indicator'); if(el) el.remove(); }
-function showChips(chips) {
-  const chat=document.getElementById('chat');
-  const wrap=document.createElement('div');
-  wrap.className='chips'; wrap.id='chip-row';
-  chips.forEach(label=>{ const btn=document.createElement('button'); btn.className='chip'; btn.textContent=label; btn.onclick=()=>handleChip(label); wrap.appendChild(btn); });
-  chat.appendChild(wrap); chat.scrollTop=chat.scrollHeight;
-}
-function removeChips() { const el=document.getElementById('chip-row'); if(el) el.remove(); }
-function updatePips(tier) {
-  for(let i=1;i<=6;i++){ const p=document.getElementById(`pip${i}`); if(i<tier) p.className='tier-pip done'; else if(i===tier) p.className='tier-pip active'; else p.className='tier-pip'; }
-  const labels=['','Safety','Job type','Status','Test results','Billing','Notes'];
-  document.getElementById('tier-label').textContent=labels[tier]||'—';
+function removeTyping() { const el = document.getElementById('typing-row'); if (el) el.remove(); }
+
+// ── TTS ────────────────────────────────────────────────────────────────────
+function speak(text) {
+  if (!window.speechSynthesis || !state.lang) return;
+  window.speechSynthesis.cancel();
+  const utt = new SpeechSynthesisUtterance(text);
+  utt.lang = LANGS[state.lang].speechLang;
+  utt.rate = 1.0;
+  const voices = window.speechSynthesis.getVoices();
+  const match = voices.find(v => v.lang.startsWith(LANGS[state.lang].speechLang.split('-')[0]));
+  if (match) utt.voice = match;
+  const btn = document.getElementById('voice-btn');
+  utt.onstart = () => btn.classList.add('speaking');
+  utt.onend = () => btn.classList.remove('speaking');
+  utt.onerror = () => btn.classList.remove('speaking');
+  window.speechSynthesis.speak(utt);
 }
 
-// ── Ask question ───────────────────────────────────────────────────────────
-function askNext(flowKey, delay=500) {
-  if (!flowKey) { showFreeForm(); return; }
-  if (!Q[flowKey]) { showFreeForm(); return; }
-  pendingFlowKey = flowKey;
-  const tier = flowKey.startsWith('t1')?1:flowKey.startsWith('t2')?2:flowKey.startsWith('t3')?3:flowKey.startsWith('t4')?4:5;
-  updatePips(tier);
-  const questionText = L(flowKey);
-  const chips = C(flowKey);
-  setTimeout(()=>{
-    showTyping();
-    setTimeout(()=>{
-      removeTyping();
-      addBubble(questionText, 'ai');
-      if(chips) showChips(chips);
-      speak(questionText);
-    }, 700);
-  }, delay);
+// ── Voice input ────────────────────────────────────────────────────────────
+function toggleVoice() {
+  const btn = document.getElementById('voice-btn');
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    addBubble("Voice not available in this browser — please type.", 'sys'); return;
+  }
+  if (state.listening) {
+    state.recognition && state.recognition.stop();
+    state.listening = false; btn.classList.remove('listening'); return;
+  }
+  window.speechSynthesis && window.speechSynthesis.cancel();
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.continuous = false; rec.interimResults = false;
+  if (state.lang) rec.lang = LANGS[state.lang].speechLang;
+  rec.onresult = (e) => {
+    const t = e.results[0][0].transcript;
+    document.getElementById('text-input').value = t;
+    autoResize(document.getElementById('text-input'));
+  };
+  rec.onend = () => { state.listening = false; btn.classList.remove('listening'); };
+  rec.onerror = () => { state.listening = false; btn.classList.remove('listening'); };
+  state.recognition = rec; rec.start();
+  state.listening = true; btn.classList.add('listening');
+}
+
+// ── Send ───────────────────────────────────────────────────────────────────
+async function sendMessage() {
+  const input = document.getElementById('text-input');
+  const text = input.value.trim();
+  if (!text || state.waiting || state.complete) return;
+  input.value = ''; autoResize(input);
+  addBubble(text, 'user');
+  setWaiting(true);
+  showTyping();
+  try {
+    const response = await callClaude(text);
+    removeTyping();
+    const note = extractNote(response);
+    const preMsg = getPreMessage(response);
+    if (preMsg) { addBubble(preMsg, 'ai'); speak(preMsg); }
+    if (note) {
+      state.noteText = note;
+      state.complete = true;
+      updateNoteDisplay(note);
+      setTimeout(showSubmitButton, 600);
+    }
+  } catch (e) {
+    removeTyping();
+    addBubble("Sorry, I had a connection issue. Please try again.", 'ai');
+  }
+  setWaiting(false);
+}
+
+function setWaiting(val) {
+  state.waiting = val;
+  document.getElementById('send-btn').disabled = val;
+}
+
+function handleKey(e) { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }
+function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 120) + 'px'; }
+
+function showSubmitButton() {
+  const chat = document.getElementById('chat');
+  const btn = document.createElement('button');
+  btn.className = 'submit-btn';
+  btn.textContent = '✓ Submit job note';
+  btn.onclick = () => {
+    btn.textContent = '✓ Submitted — have a safe shift!';
+    btn.style.background = '#1e6000'; btn.disabled = true;
+    addBubble("Note submitted. Nice work today — stay safe out there! 👷", 'ai');
+    speak("Note submitted. Nice work today, stay safe out there!");
+  };
+  chat.appendChild(btn);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // ── Language selection ─────────────────────────────────────────────────────
-function selectLanguage(langKey) {
+function showLanguageSelector() {
+  if (state.started) return;   // guard against double-fire
+  state.started = true;
+  const welcomeMsg = "Welcome to NoteAssist! / Bienvenue! / ¡Bienvenido! / 欢迎! / Maligayang pagdating! / ਸੁਆਗਤ ਹੈ!\n\nWhat language would you like to use today?";
+  addBubble(welcomeMsg, 'ai');
+  const wrap = document.createElement('div');
+  wrap.className = 'lang-selector';
+  Object.entries(LANGS).forEach(([key, conf]) => {
+    const btn = document.createElement('button');
+    btn.className = 'lang-chip'; btn.textContent = conf.label;
+    btn.onclick = () => selectLanguage(key, wrap);
+    wrap.appendChild(btn);
+  });
+  document.getElementById('chat').appendChild(wrap);
+  document.getElementById('chat').scrollTop = 999999;
+  speak(welcomeMsg);
+}
+
+async function selectLanguage(langKey, selectorEl) {
   state.lang = langKey;
+  if (selectorEl) selectorEl.remove();
   const conf = LANGS[langKey];
-  document.getElementById('lang-badge').textContent = conf.badge;
-  document.getElementById('text-input').placeholder = langKey==='en'?'Type or speak in any language…':Q.lang_select[langKey].split('.')[0]+'…';
-  askNext(getNextFlow(), 300);
+  const langBtn = document.getElementById('lang-btn');
+  langBtn.textContent = `🌐 ${conf.badge}`;
+  langBtn.style.display = 'block';
+  addBubble(conf.label, 'user');
+  setWaiting(true);
+  showTyping();
+  const opening = OPENINGS[langKey] || OPENINGS.en;
+  state.conversationHistory.push({ role: 'assistant', content: opening });
+  setTimeout(() => {
+    removeTyping();
+    addBubble(opening, 'ai');
+    speak(opening);
+    setWaiting(false);
+  }, 1000);
 }
 
-function handleLangChip(label) {
-  removeChips();
-  addBubble(label, 'user');
-  const map = { '🇨🇦 English':'en','🇫🇷 Français':'fr','🇪🇸 Español':'es','🇨🇳 普通话':'zh','🇵🇭 Filipino':'tl','🇮🇳 ਪੰਜਾਬੀ':'pa' };
-  const key = map[label] || 'en';
-  selectLanguage(key);
+function resetLanguage() {
+  state.lang = null;
+  state.conversationHistory = [];
+  state.noteText = '';
+  state.complete = false;
+  state.started = false;
+  document.getElementById('chat').innerHTML = '';
+  document.getElementById('note-preview').textContent = '— your note will build here as you talk —';
+  document.getElementById('note-preview').classList.remove('open');
+  document.getElementById('note-count').textContent = '';
+  document.getElementById('lang-btn').style.display = 'none';
+  document.getElementById('note-chevron').textContent = '▲ tap to expand';
+  showLanguageSelector();
 }
 
-// ── Process answer ─────────────────────────────────────────────────────────
-function processAnswer(text) {
-  if (!pendingFlowKey) return;
-  removeChips();
-  addBubble(text, 'user');
-  const key = pendingFlowKey.startsWith('t')?({t1_safety:'safety_incident',t1_customer:'customer_present',t2_family:'job_family',t2_tech:'tech_type',t3_status:'closure_status',t3_incomplete_team:'handoff_team',t3_cust_cancel:'cancel_reason',t3_sys_cancel:'sys_cancel_reason',t3_new_appt:'new_appt_details',t4c_ped:'ped_location',t4c_nid:'nid_location',t4c_jumpers:'jumpers',t4c_dialtone:'last_dialtone',t4c_testpairs:'test_pair_results',t4c_tdr:'tdr_result',t4c_dsl:'dsl_rates',t4c_no_test_reason:'no_test_reason',t4f_drop:'drop_type',t4f_infra:'infra_type',t4f_ped:'ped_location',t4f_jumpers:'jumpers',t4f_light:'light_levels',t4f_fdh:'fdh_assignment',t5_billing:'billing_charges',t5_billing_detail:'billing_detail',t5_signature:'customer_signature',t5_no_charge:'no_charge_confirmation'}[pendingFlowKey]):null;
-  if(key) { state.noteFields[key]=text; updateNote(); }
-  const tl = text.toLowerCase();
-  if(key==='job_family') state.jobFamily=tl.includes('repair')||tl.includes('répar')||tl.includes('murm')?'repair':'install';
-  if(key==='tech_type') state.techType=(tl.includes('fibre')||tl.includes('fiber')||tl.includes('光纤')||tl.includes('fibra'))?'fibre':'copper';
-  if(key==='closure_status'){
-    if(tl.includes('incomplet')||tl.includes('handed')||tl.includes('transf')||tl.includes('未完')||tl.includes('hindi tapos')||tl.includes('ਅਧੂਰਾ')) state.closureStatus='incomplete';
-    else if(tl.includes('customer')||tl.includes('client')||tl.includes('客户取消')||tl.includes('kansela ng customer')||tl.includes('ਗਾਹਕ')) state.closureStatus='cust_cancel';
-    else if(tl.includes('system')||tl.includes('système')||tl.includes('系统')||tl.includes('ਸਿਸਟਮ')) state.closureStatus='sys_cancel';
-    else if(tl.includes('appoint')||tl.includes('rendez')||tl.includes('cita')||tl.includes('重新')||tl.includes('bagong')||tl.includes('ਨਵੀਂ')) state.closureStatus='new_appt';
-    else state.closureStatus='completed';
-    injectFlowsAfterStatus(state.closureStatus);
-  }
-  if(key==='test_pair_results'&&(tl.includes('no meter')||tl.includes('pas de')||tl.includes('sin metro')||tl.includes('没有')||tl.includes('walang')||tl.includes('ਨਹੀਂ'))) flowQueue.unshift('t4c_no_test_reason');
-  if(key==='billing_charges'){
-    if(tl.includes('yes')||tl.includes('oui')||tl.includes('sí')||tl.includes('是')||tl.includes('oo')||tl.includes('ਹਾਂ')) flowQueue.unshift('t5_billing_detail','t5_signature');
-    else flowQueue.unshift('t5_no_charge');
-  }
-  askNext(getNextFlow());
-}
-
-function handleChip(label) { processAnswer(label); }
-function sendAnswer() {
-  const input=document.getElementById('text-input');
-  const val=input.value.trim(); if(!val) return;
-  input.value=''; autoResize(input); processAnswer(val);
-}
-function handleKey(e){ if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAnswer();} }
-function autoResize(el){ el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
-
-// ── Voice ──────────────────────────────────────────────────────────────────
-function toggleVoice(){
-  const btn=document.getElementById('voice-btn');
-  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){ addBubble("Voice not supported — please type.", 'sys'); return; }
-  if(state.listening){ state.recognition&&state.recognition.stop(); state.listening=false; btn.classList.remove('listening'); return; }
-  window.speechSynthesis&&window.speechSynthesis.cancel();
-  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-  const rec=new SR(); rec.continuous=false; rec.interimResults=false;
-  if(state.lang) rec.lang=LANGS[state.lang].speechLang;
-  rec.onresult=(e)=>{ const t=e.results[0][0].transcript; document.getElementById('text-input').value=t; autoResize(document.getElementById('text-input')); };
-  rec.onend=()=>{ state.listening=false; btn.classList.remove('listening'); };
-  rec.onerror=()=>{ state.listening=false; btn.classList.remove('listening'); };
-  state.recognition=rec; rec.start(); state.listening=true; btn.classList.add('listening');
-}
-
-// ── Free-form ──────────────────────────────────────────────────────────────
-function showFreeForm(){
-  state.complete=true; pendingFlowKey=null; updatePips(6);
-  const introText=L('freeform_intro');
-  setTimeout(()=>{
-    showTyping();
-    setTimeout(()=>{
-      removeTyping();
-      addBubble(introText,'ai');
-      speak(introText);
-      const chat=document.getElementById('chat');
-      setTimeout(()=>{
-        const card=document.createElement('div');
-        card.className='freeform-card';
-        const ffLabels={en:['📝 Field notes','🚚 Instructions for dispatch or future tech'],fr:['📝 Notes de terrain','🚚 Instructions pour la répartition ou le prochain tech'],es:['📝 Notas de campo','🚚 Instrucciones para despacho o futuro técnico'],zh:['📝 现场记录','🚚 调度或下位技术员指示'],tl:['📝 Field notes','🚚 Tagubilin para sa dispatch o susunod na tech'],pa:['📝 ਫੀਲਡ ਨੋਟਸ','🚚 ਡਿਸਪੈਚ ਜਾਂ ਅਗਲੇ ਤਕਨੀਸ਼ੀਅਨ ਲਈ ਹਦਾਇਤਾਂ']};
-        const doneLabels={en:'Done — finish note',fr:'Terminé — finaliser la note',es:'Listo — finalizar nota',zh:'完成 — 生成记录',tl:'Tapos — tapusin ang note',pa:'ਹੋ ਗਿਆ — ਨੋਟ ਮੁਕੰਮਲ ਕਰੋ'};
-        const ll=ffLabels[state.lang]||ffLabels.en;
-        card.innerHTML=`<div class="freeform-section"><div class="freeform-label">${ll[0]}</div><textarea class="freeform-textarea" id="ff-notes" placeholder="…"></textarea></div><div class="freeform-section"><div class="freeform-label dispatch">${ll[1]}</div><textarea class="freeform-textarea" id="ff-dispatch" placeholder="…"></textarea></div><button class="freeform-done-btn" onclick="submitFreeForm()">${doneLabels[state.lang]||doneLabels.en}</button>`;
-        chat.appendChild(card); chat.scrollTop=chat.scrollHeight;
-      },400);
-    },800);
-  },500);
-}
-
-// ── AI translation ─────────────────────────────────────────────────────────
-async function translateNoteFields(fields){
-  const entries=Object.entries(fields); if(!entries.length) return fields;
-  const fieldList=entries.map(([k,v])=>`${k}: ${v}`).join('\n');
-  const prompt=`You are a bilingual field services assistant for TELUS.\nTranslate ALL field values below into clear professional Canadian English.\nPreserve all technical terms, numbers, measurements, codes, and addresses exactly.\nReturn ONLY a valid JSON object with the same keys and English-translated values. No preamble, no markdown.\n\n${fieldList}`;
-  try {
-    const res=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({model:"claude-sonnet-4-6",max_tokens:1000,messages:[{role:"user",content:prompt}]})});
-    const data=await res.json();
-    const raw=data.content[0].text.replace(/```json|```/g,'').trim();
-    return JSON.parse(raw);
-  } catch(e){ return fields; }
-}
-
-async function submitFreeForm(){
-  const notes=document.getElementById('ff-notes').value.trim();
-  const dispatch=document.getElementById('ff-dispatch').value.trim();
-  if(notes) state.noteFields['field_notes']=notes;
-  if(dispatch) state.noteFields['dispatch_instructions']=dispatch;
-  document.querySelector('.freeform-done-btn').disabled=true;
-  const chat=document.getElementById('chat');
-  const banner=document.createElement('div');
-  banner.className='translating-banner';
-  banner.innerHTML=`<span class="spin">⟳</span> Translating to English…`;
-  chat.appendChild(banner); chat.scrollTop=chat.scrollHeight;
-  try {
-    const translated=await translateNoteFields(state.noteFields);
-    state.noteFields=translated; updateNote();
-  } catch(e){}
-  banner.remove();
-  addBubble('✓ Note compiled', 'user');
-  finishInterview();
-}
-
-function finishInterview(){
-  const completeText=L('complete');
-  setTimeout(()=>{
-    showTyping();
-    setTimeout(()=>{
-      removeTyping();
-      addBubble(completeText,'ai');
-      speak(completeText);
-      const chat=document.getElementById('chat');
-      const submitLabels={en:'Submit job note ✓',fr:'Soumettre la note ✓',es:'Enviar nota ✓',zh:'提交工单记录 ✓',tl:'Isumite ang job note ✓',pa:'ਜੌਬ ਨੋਟ ਜਮ੍ਹਾਂ ਕਰੋ ✓'};
-      const btn=document.createElement('button');
-      btn.className='submit-btn'; btn.textContent=submitLabels[state.lang]||submitLabels.en;
-      btn.onclick=()=>{
-        btn.textContent='✓'; btn.style.background='#1e6600'; btn.disabled=true;
-        const submittedText=L('submitted');
-        addBubble(submittedText,'ai');
-        speak(submittedText);
-        document.getElementById('note-preview').classList.add('open');
-      };
-      chat.appendChild(btn); chat.scrollTop=chat.scrollHeight;
-      document.getElementById('note-preview').classList.add('open');
-    },1000);
-  },400);
-}
-
-function toggleNote(){ document.getElementById('note-preview').classList.toggle('open'); }
-
-// ── Boot ───────────────────────────────────────────────────────────────────
-window.onload=()=>{
-  updateNote();
-  // Wait for voices to load then start
-  const startIntro=()=>{
-    const welcomeText=Q.lang_select.en;
-    setTimeout(()=>{
-      showTyping();
-      setTimeout(()=>{
-        removeTyping();
-        addBubble(welcomeText,'ai');
-        showChips(CHIPS.lang_select.en);
-        // Override handleChip for language selection
-        document.getElementById('chip-row').querySelectorAll('.chip').forEach(btn=>{
-          btn.onclick=()=>handleLangChip(btn.textContent);
-        });
-        speak(welcomeText);
-      },800);
-    },500);
-  };
-  if(window.speechSynthesis){
-    if(speechSynthesis.getVoices().length>0) startIntro();
-    else { speechSynthesis.onvoiceschanged=startIntro; setTimeout(startIntro,1500); }
-  } else { startIntro(); }
+// ── Boot — single guaranteed start ────────────────────────────────────────
+window.onload = () => {
+  setTimeout(showLanguageSelector, 700);
 };
 </script>
 </body>
