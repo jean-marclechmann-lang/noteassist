@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NoteAssist — TELUS Field Services</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --telus-purple: #4B286D;
+    --telus-purple-light: #6B3E99;
+    --telus-green: #2B8000;
+    --bg: #F5F3F7;
+    --surface: #FFFFFF;
+    --surface2: #F0EBF5;
+    --text: #1A1A1A;
+    --text-muted: #6B6675;
+    --border: #D8D0E0;
+    --ai-bubble: #EDE8F5;
+    --ai-bubble-border: #C4B8D9;
+    --note-bg: #F0F7EE;
+    --note-border: #A8D5A0;
+    --danger: #C0392B;
+    --radius: 16px;
+    --radius-sm: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1A1520; --surface: #241E2C; --surface2: #2E2638;
+      --text: #F0EBF5; --text-muted: #9A8FAA; --border: #3E3450;
+      --ai-bubble: #2E2548; --ai-bubble-border: #4E3E70;
+      --note-bg: #1A2E1A; --note-border: #2E6E2E;
+    }
+  }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+    min-height: 100vh; display: flex; flex-direction: column;
+    max-width: 480px; margin: 0 auto;
+  }
+  .header {
+    background: var(--telus-purple); color: white;
+    padding: 14px 18px 12px; display: flex; align-items: center; gap: 10px; flex-shrink: 0;
+  }
+  .header-logo { width: 28px; height: 28px; background: white; border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+  .header-logo svg { width: 18px; height: 18px; }
+  .header-text { flex: 1; }
+  .header-title { font-size: 15px; font-weight: 600; letter-spacing: -0.2px; }
+  .header-sub { font-size: 11px; opacity: 0.75; margin-top: 1px; }
+  .progress-bar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; gap: 4px; align-items: center; flex-shrink: 0;
+  }
+  .tier-pip { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background 0.3s; }
+  .tier-pip.active { background: var(--telus-purple); }
+  .tier-pip.done { background: var(--telus-green); }
+  .tier-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; margin-left: 6px; }
+  .chat-area { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+  .bubble-row { display: flex; gap: 8px; align-items: flex-end; }
+  .bubble-row.user { flex-direction: row-reverse; }
+  .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--telus-purple); display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 13px; color: white; font-weight: 600; }
+  .avatar.user-av { background: var(--telus-green); }
+  .bubble { max-width: 82%; padding: 11px 14px; border-radius: var(--radius); font-size: 14px; line-height: 1.5; }
+  .bubble.ai { background: var(--ai-bubble); border: 1px solid var(--ai-bubble-border); border-bottom-left-radius: 4px; color: var(--text); }
+  .bubble.user { background: var(--telus-purple); color: white; border-bottom-right-radius: 4px; }
+  .bubble.system { background: #f0f0f0; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 12px; color: var(--text-muted); text-align: center; max-width: 100%; padding: 8px 12px; }
+  @media (prefers-color-scheme: dark) { .bubble.system { background: #2a2a2a; } }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; padding: 0 0 4px 38px; }
+  .chip { background: var(--surface); border: 1.5px solid var(--telus-purple); color: var(--telus-purple); border-radius: 20px; padding: 7px 14px; font-size: 13px; cursor: pointer; transition: all 0.15s; font-weight: 500; -webkit-tap-highlight-color: transparent; }
+  .chip:active, .chip:hover { background: var(--telus-purple); color: white; }
+  .freeform-card {
+    background: var(--surface); border: 1.5px solid var(--telus-purple);
+    border-radius: 14px; padding: 14px 16px;
+    display: flex; flex-direction: column; gap: 12px;
+    margin: 0 0 4px 38px;
+  }
+  .freeform-section { display: flex; flex-direction: column; gap: 6px; }
+  .freeform-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; color: var(--telus-purple); }
+  .freeform-label.dispatch { color: var(--telus-green); }
+  .freeform-textarea {
+    background: var(--bg); border: 1.5px solid var(--border);
+    border-radius: 10px; padding: 10px 12px;
+    font-size: 13px; font-family: inherit; color: var(--text);
+    resize: none; min-height: 72px; line-height: 1.5; outline: none;
+    transition: border-color 0.2s;
+  }
+  .freeform-textarea:focus { border-color: var(--telus-purple); }
+  .freeform-textarea.dispatch:focus { border-color: var(--telus-green); }
+  .freeform-textarea::placeholder { color: var(--text-muted); font-style: italic; }
+  .freeform-done-btn {
+    align-self: flex-end; background: var(--telus-purple); color: white;
+    border: none; border-radius: 20px; padding: 8px 20px;
+    font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s;
+  }
+  .freeform-done-btn:hover { background: var(--telus-purple-light); }
+  .note-panel { background: var(--surface); border-top: 1px solid var(--border); flex-shrink: 0; }
+  .note-toggle { padding: 10px 16px; display: flex; align-items: center; justify-content: space-between; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+  .note-toggle-label { font-size: 12px; font-weight: 600; color: var(--telus-green); text-transform: uppercase; letter-spacing: 0.5px; }
+  .note-toggle-count { font-size: 11px; color: var(--text-muted); }
+  .note-content { display: none; background: var(--note-bg); border-top: 1px solid var(--note-border); padding: 12px 16px; font-size: 12px; line-height: 1.7; color: var(--text); max-height: 160px; overflow-y: auto; font-family: "SF Mono","Fira Code",monospace; white-space: pre-wrap; }
+  .note-content.open { display: block; }
+  .input-row { background: var(--surface); border-top: 1px solid var(--border); padding: 10px 12px; display: flex; gap: 8px; align-items: flex-end; flex-shrink: 0; }
+  .text-input { flex: 1; background: var(--bg); border: 1.5px solid var(--border); border-radius: 22px; padding: 10px 14px; font-size: 14px; color: var(--text); resize: none; outline: none; max-height: 100px; min-height: 42px; font-family: inherit; line-height: 1.4; transition: border-color 0.2s; }
+  .text-input:focus { border-color: var(--telus-purple); }
+  .text-input::placeholder { color: var(--text-muted); }
+  .send-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--telus-purple); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background 0.15s; -webkit-tap-highlight-color: transparent; }
+  .send-btn:hover { background: var(--telus-purple-light); }
+  .send-btn svg { width: 18px; height: 18px; fill: white; }
+  .voice-btn { width: 42px; height: 42px; border-radius: 50%; background: var(--surface2); border: 1.5px solid var(--border); cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s; -webkit-tap-highlight-color: transparent; }
+  .voice-btn.listening { background: var(--danger); border-color: var(--danger); animation: pulse 1s ease-in-out infinite; }
+  .voice-btn svg { width: 18px; height: 18px; }
+  @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
+  .typing { display: flex; gap: 4px; padding: 8px 14px; align-items: center; }
+  .typing span { width: 7px; height: 7px; background: var(--text-muted); border-radius: 50%; animation: bounce 1.2s ease-in-out infinite; }
+  .typing span:nth-child(2) { animation-delay: 0.2s; }
+  .typing span:nth-child(3) { animation-delay: 0.4s; }
+  @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
+  .submit-btn { width: 100%; padding: 14px; background: var(--telus-green); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; margin: 8px 0 4px; transition: background 0.15s; }
+  .submit-btn:hover { background: #1e6600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-logo">
+    <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#4B286D" stroke-width="2.5"/><path d="M8 12h8M12 8v8" stroke="#4B286D" stroke-width="2" stroke-linecap="round"/></svg>
+  </div>
+  <div class="header-text">
+    <div class="header-title">NoteAssist</div>
+    <div class="header-sub">TELUS Field Services — Job Closure</div>
+  </div>
+</div>
+
+<div class="progress-bar">
+  <div class="tier-pip" id="pip1"></div>
+  <div class="tier-pip" id="pip2"></div>
+  <div class="tier-pip" id="pip3"></div>
+  <div class="tier-pip" id="pip4"></div>
+  <div class="tier-pip" id="pip5"></div>
+  <div class="tier-pip" id="pip6"></div>
+  <span class="tier-label" id="tier-label">Safety</span>
+</div>
+
+<div class="chat-area" id="chat"></div>
+
+<div class="note-panel">
+  <div class="note-toggle" onclick="toggleNote()">
+    <span class="note-toggle-label">📋 Live note preview</span>
+    <span class="note-toggle-count" id="note-count">0 fields captured</span>
+  </div>
+  <div class="note-content" id="note-preview"></div>
+</div>
+
+<div class="input-row">
+  <button class="voice-btn" id="voice-btn" onclick="toggleVoice()" title="Voice input">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+      <rect x="9" y="2" width="6" height="12" rx="3"/>
+      <path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
+    </svg>
+  </button>
+  <textarea class="text-input" id="text-input" placeholder="Type your answer…" rows="1"
+    onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
+  <button class="send-btn" onclick="sendAnswer()">
+    <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
+  </button>
+</div>
+
+<script>
+const state = {
+  tier: 1, jobFamily: null, techType: null, closureStatus: null,
+  noteFields: {}, listening: false, recognition: null, complete: false
+};
+
+const flows = {
+  t1_safety:          { tier:1, key:'safety_incident',        ask:"Hi there! Before we close this job — were there any safety incidents or hazards on site today?", chips:["No incidents","Yes — incident occurred"] },
+  t1_customer:        { tier:1, key:'customer_present',       ask:"Was the customer present on site during the work?", chips:["Yes, customer was present","No, no one home","Someone else was present"] },
+  t2_family:          { tier:2, key:'job_family',             ask:"What type of job are you closing?", chips:["Install","Repair"] },
+  t2_tech:            { tier:2, key:'tech_type',              ask:"Is this a copper or fibre job?", chips:["Copper","Fibre"] },
+  t3_status:          { tier:3, key:'closure_status',         ask:"How did the job close?", chips:["Completed ✓","Incomplete — handed off","Cancelled by customer","Cancelled by system","New appointment negotiated"] },
+  t3_incomplete_team: { tier:3, key:'handoff_team',           ask:"Which team was this handed off to, and was a handoff ticket created?", chips:null },
+  t3_cust_cancel:     { tier:3, key:'cancel_reason',          ask:"What was the reason the customer cancelled?", chips:["Customer not home","Customer changed their mind","Access issue — could not enter","Other — I'll describe"] },
+  t3_sys_cancel:      { tier:3, key:'sys_cancel_reason',      ask:"What was the system cancellation reason shown?", chips:null },
+  t3_new_appt:        { tier:3, key:'new_appt_details',       ask:"What date and time was negotiated with the customer for the new appointment?", chips:null },
+  t4c_ped:            { tier:4, key:'ped_location',           ask:"Where is the pedestal located? (e.g. alley 2 houses south, front yard)", chips:null },
+  t4c_nid:            { tier:4, key:'nid_location',           ask:"Where is the NID located on the premises?", chips:["Back of house","Front of house","Side of house","Inside — utility room"] },
+  t4c_jumpers:        { tier:4, key:'jumpers',                ask:"Were jumpers run at the SAC and CO?", chips:["Yes — SAC and CO","SAC only","CO only","No jumpers run"] },
+  t4c_dialtone:       { tier:4, key:'last_dialtone',          ask:"What was the last working point of dial tone?", chips:["SAC","CO","NID","PED","No dial tone confirmed"] },
+  t4c_testpairs:      { tier:4, key:'test_pair_results',      ask:"Please provide your test pair results — TELUS requires a minimum of 3 pairs. What were the readings?", chips:["No meter available — will explain","Online test only — no meter"] },
+  t4c_tdr:            { tier:4, key:'tdr_result',             ask:"Did you run a TDR? If yes, what was the result?", chips:["Yes — I'll enter the result","No TDR meter available","Not applicable"] },
+  t4c_dsl:            { tier:4, key:'dsl_rates',              ask:"What were the DSL sync rates? (downstream / upstream)", chips:["Could not test — no laptop on site","N/A — voice only job"] },
+  t4c_no_test_reason: { tier:4, key:'no_test_reason',         ask:"Which of the following explains why tests couldn't be completed?", chips:["No TDR meter in my kit","No laptop for online tests","Both — no meter and no laptop","Equipment malfunctioned","Other — I'll explain"] },
+  t4f_drop:           { tier:4, key:'drop_type',              ask:"What type of drop was used?", chips:["Aerial","Underground / direct buried","Pre-existing drop reused"] },
+  t4f_infra:          { tier:4, key:'infra_type',             ask:"What was the infrastructure type?", chips:["GPON","Active Ethernet","Other / unsure"] },
+  t4f_ped:            { tier:4, key:'ped_location',           ask:"Where is the pedestal or NAP located?", chips:null },
+  t4f_jumpers:        { tier:4, key:'jumpers',                ask:"Were jumpers run?", chips:["Yes","No — not required for this job"] },
+  t4f_light:          { tier:4, key:'light_levels',           ask:"What were the light levels recorded at the ONT?", chips:["Within range — I'll enter values","Out of range — I'll note the readings","Could not test"] },
+  t4f_fdh:            { tier:4, key:'fdh_assignment',         ask:"What is the FDH number and assignment number?", chips:null },
+  t5_billing:         { tier:5, key:'billing_charges',        ask:"Were there any charges applied to the customer for today's work?", chips:["No charges","Yes — there were charges"] },
+  t5_billing_detail:  { tier:5, key:'billing_detail',         ask:"Please describe the charges. Were they clearly explained to the customer?", chips:null },
+  t5_signature:       { tier:5, key:'customer_signature',     ask:"Did the customer sign off on the charges?", chips:["Yes — signed","Customer refused to sign","Customer not present"] },
+  t5_no_charge:       { tier:5, key:'no_charge_confirmation', ask:"Was the customer informed there are no charges for today's visit?", chips:["Yes — confirmed no charge","Customer was not present"] }
+};
+
+const FLOW_SEQUENCE = ['t1_safety','t1_customer','t2_family','t2_tech','t3_status'];
+let flowQueue = [...FLOW_SEQUENCE];
+let pendingFlowKey = null;
+
+function getNextFlow() { return flowQueue.length > 0 ? flowQueue.shift() : null; }
+
+function injectFlowsAfterStatus(status) {
+  const reasonMap = { incomplete:['t3_incomplete_team'], cust_cancel:['t3_cust_cancel'], sys_cancel:['t3_sys_cancel'], new_appt:['t3_new_appt'] };
+  if (status !== 'completed') { flowQueue = [...(reasonMap[status]||[])]; return; }
+  const t4 = state.techType === 'fibre'
+    ? ['t4f_drop','t4f_infra','t4f_ped','t4f_jumpers','t4f_light','t4f_fdh']
+    : ['t4c_ped','t4c_nid','t4c_jumpers','t4c_dialtone','t4c_testpairs','t4c_tdr','t4c_dsl'];
+  flowQueue = [...t4, 't5_billing'];
+}
+
+function buildNote() {
+  const f = state.noteFields;
+  const lines = [];
+  const job = [f.job_family, f.tech_type].filter(Boolean).map(s=>s.toUpperCase()).join(' / ');
+  if (job) lines.push(`JOB TYPE: ${job}`);
+  if (f.closure_status) lines.push(`STATUS: ${f.closure_status}`);
+  lines.push('');
+  if (f.safety_incident) lines.push(`SAFETY: ${f.safety_incident}`);
+  if (f.customer_present) lines.push(`CUSTOMER: ${f.customer_present}`);
+  if (f.handoff_team) lines.push(`HANDOFF: ${f.handoff_team}`);
+  if (f.cancel_reason) lines.push(`CANCELLATION REASON: ${f.cancel_reason}`);
+  if (f.sys_cancel_reason) lines.push(`SYSTEM CANCEL: ${f.sys_cancel_reason}`);
+  if (f.new_appt_details) lines.push(`NEW APPOINTMENT: ${f.new_appt_details}`);
+  if (f.ped_location) lines.push(`PED LOCATION: ${f.ped_location}`);
+  if (f.nid_location) lines.push(`NID LOCATION: ${f.nid_location}`);
+  if (f.jumpers) lines.push(`JUMPERS: ${f.jumpers}`);
+  if (f.last_dialtone) lines.push(`LAST WORKING DIAL TONE: ${f.last_dialtone}`);
+  if (f.test_pair_results) lines.push(`TEST PAIR RESULTS: ${f.test_pair_results}`);
+  if (f.tdr_result) lines.push(`TDR: ${f.tdr_result}`);
+  if (f.dsl_rates) lines.push(`DSL RATES: ${f.dsl_rates}`);
+  if (f.no_test_reason) lines.push(`TESTS NOT COMPLETED — REASON: ${f.no_test_reason}`);
+  if (f.drop_type) lines.push(`DROP TYPE: ${f.drop_type}`);
+  if (f.infra_type) lines.push(`INFRASTRUCTURE: ${f.infra_type}`);
+  if (f.light_levels) lines.push(`LIGHT LEVELS: ${f.light_levels}`);
+  if (f.fdh_assignment) lines.push(`FDH / ASSIGNMENT: ${f.fdh_assignment}`);
+  lines.push('');
+  if (f.billing_charges) lines.push(`BILLING: ${f.billing_charges}`);
+  if (f.billing_detail) lines.push(`CHARGE DETAIL: ${f.billing_detail}`);
+  if (f.customer_signature) lines.push(`CUSTOMER SIGNATURE: ${f.customer_signature}`);
+  if (f.no_charge_confirmation) lines.push(`NO CHARGE CONFIRMED: ${f.no_charge_confirmation}`);
+  if (f.field_notes || f.dispatch_instructions) {
+    lines.push('');
+    if (f.field_notes) lines.push(`FIELD NOTES:\n${f.field_notes}`);
+    if (f.dispatch_instructions) lines.push(`DISPATCH / FUTURE TECH INSTRUCTIONS:\n${f.dispatch_instructions}`);
+  }
+  return lines.filter((l,i,a)=>!(l===''&&(a[i-1]===''||i===0))).join('\n').trim();
+}
+
+function updateNote() {
+  const note = buildNote();
+  document.getElementById('note-preview').textContent = note || '— answers will appear here —';
+  const count = Object.keys(state.noteFields).length;
+  document.getElementById('note-count').textContent = `${count} field${count!==1?'s':''} captured`;
+  if (count > 0) document.getElementById('note-preview').classList.add('open');
+}
+
+function addBubble(text, type) {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.className = `bubble-row ${type==='user'?'user':''}`;
+  if (type==='system') {
+    row.innerHTML = `<div class="bubble system">${text}</div>`;
+  } else {
+    const av = type==='user' ? `<div class="avatar user-av">T</div>` : `<div class="avatar">N</div>`;
+    row.innerHTML = `${av}<div class="bubble ${type}">${text}</div>`;
+  }
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function showTyping() {
+  const chat = document.getElementById('chat');
+  const row = document.createElement('div');
+  row.id = 'typing-indicator'; row.className = 'bubble-row';
+  row.innerHTML = `<div class="avatar">N</div><div class="bubble ai"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  chat.appendChild(row);
+  chat.scrollTop = chat.scrollHeight;
+}
+function removeTyping() { const el=document.getElementById('typing-indicator'); if(el) el.remove(); }
+
+function showChips(chips) {
+  const chat = document.getElementById('chat');
+  const wrap = document.createElement('div');
+  wrap.className='chips'; wrap.id='chip-row';
+  chips.forEach(label => {
+    const btn = document.createElement('button');
+    btn.className='chip'; btn.textContent=label;
+    btn.onclick = () => handleChip(label);
+    wrap.appendChild(btn);
+  });
+  chat.appendChild(wrap);
+  chat.scrollTop = chat.scrollHeight;
+}
+function removeChips() { const el=document.getElementById('chip-row'); if(el) el.remove(); }
+
+function updatePips(tier) {
+  for (let i=1;i<=6;i++) {
+    const pip = document.getElementById(`pip${i}`);
+    if (i<tier) pip.className='tier-pip done';
+    else if (i===tier) pip.className='tier-pip active';
+    else pip.className='tier-pip';
+  }
+  const labels = ['','Safety','Job type','Status','Test results','Billing','Notes'];
+  document.getElementById('tier-label').textContent = labels[tier]||'';
+}
+
+function askNext(flowKey, delay=600) {
+  if (!flowKey) { showFreeForm(); return; }
+  const flow = flows[flowKey];
+  if (!flow) { showFreeForm(); return; }
+  pendingFlowKey = flowKey;
+  updatePips(flow.tier);
+  setTimeout(() => {
+    showTyping();
+    setTimeout(() => {
+      removeTyping();
+      addBubble(flow.ask, 'ai');
+      if (flow.chips) showChips(flow.chips);
+    }, 900);
+  }, delay);
+}
+
+function processAnswer(text) {
+  if (!pendingFlowKey) return;
+  removeChips();
+  addBubble(text, 'user');
+  const flow = flows[pendingFlowKey];
+  const key = flow.key;
+  state.noteFields[key] = text;
+  updateNote();
+  if (key==='job_family') state.jobFamily = text.toLowerCase().includes('repair')?'repair':'install';
+  if (key==='tech_type') state.techType = text.toLowerCase().includes('fibre')?'fibre':'copper';
+  if (key==='closure_status') {
+    const t = text.toLowerCase();
+    if (t.includes('incomplete')) state.closureStatus='incomplete';
+    else if (t.includes('cancelled by customer')||t.includes('customer')) state.closureStatus='cust_cancel';
+    else if (t.includes('system')) state.closureStatus='sys_cancel';
+    else if (t.includes('new appoint')) state.closureStatus='new_appt';
+    else state.closureStatus='completed';
+    injectFlowsAfterStatus(state.closureStatus);
+  }
+  if (key==='test_pair_results' && (text.toLowerCase().includes('no meter')||text.toLowerCase().includes('no test'))) {
+    flowQueue.unshift('t4c_no_test_reason');
+  }
+  if (key==='billing_charges') {
+    if (text.toLowerCase().includes('yes')) flowQueue.unshift('t5_billing_detail','t5_signature');
+    else flowQueue.unshift('t5_no_charge');
+  }
+  askNext(getNextFlow());
+}
+
+function handleChip(label) { processAnswer(label); }
+
+function sendAnswer() {
+  const input = document.getElementById('text-input');
+  const val = input.value.trim();
+  if (!val) return;
+  input.value=''; autoResize(input);
+  processAnswer(val);
+}
+
+function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAnswer();} }
+function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
+
+function showFreeForm() {
+  state.complete=true; pendingFlowKey=null; updatePips(6);
+  setTimeout(() => {
+    showTyping();
+    setTimeout(() => {
+      removeTyping();
+      addBubble("Almost done! Two last things — completely open-ended, take as much space as you need.", 'ai');
+      const chat = document.getElementById('chat');
+      setTimeout(() => {
+        const card = document.createElement('div');
+        card.className = 'freeform-card';
+        card.innerHTML = `
+          <div class="freeform-section">
+            <div class="freeform-label">📝 Field notes</div>
+            <textarea class="freeform-textarea" id="ff-notes" placeholder="Describe what you encountered on site — anything unusual, context about the job, conditions, discoveries, workarounds…"></textarea>
+          </div>
+          <div class="freeform-section">
+            <div class="freeform-label dispatch">🚚 Instructions for dispatch or future tech</div>
+            <textarea class="freeform-textarea dispatch" id="ff-dispatch" placeholder="e.g. Ped cover is damaged — needs replacement. Cable run is tight at the NID. Return visit required with TDR meter…"></textarea>
+          </div>
+          <button class="freeform-done-btn" onclick="submitFreeForm()">Done — finish note</button>
+        `;
+        chat.appendChild(card);
+        chat.scrollTop = chat.scrollHeight;
+      }, 300);
+    }, 900);
+  }, 500);
+}
+
+function submitFreeForm() {
+  const notes = document.getElementById('ff-notes').value.trim();
+  const dispatch = document.getElementById('ff-dispatch').value.trim();
+  if (notes) state.noteFields['field_notes'] = notes;
+  if (dispatch) state.noteFields['dispatch_instructions'] = dispatch;
+  updateNote();
+  const summary = [notes&&'✓ Field notes captured', dispatch&&'✓ Dispatch instructions captured'].filter(Boolean).join(' · ') || 'Both sections left blank';
+  addBubble(summary, 'user');
+  finishInterview();
+}
+
+function finishInterview() {
+  setTimeout(() => {
+    showTyping();
+    setTimeout(() => {
+      removeTyping();
+      addBubble("Your job note is complete and ready to submit. Tap the preview below to review it first.", 'ai');
+      const chat = document.getElementById('chat');
+      const btn = document.createElement('button');
+      btn.className='submit-btn'; btn.textContent='Submit job note ✓';
+      btn.onclick = () => {
+        btn.textContent='✓ Submitted successfully';
+        btn.style.background='#1e6600';
+        btn.disabled=true;
+        addBubble("Note submitted. Have a safe rest of your shift!", 'ai');
+        document.getElementById('note-preview').classList.add('open');
+      };
+      chat.appendChild(btn);
+      chat.scrollTop = chat.scrollHeight;
+      document.getElementById('note-preview').classList.add('open');
+    }, 1000);
+  }, 400);
+}
+
+function toggleNote() { document.getElementById('note-preview').classList.toggle('open'); }
+
+function toggleVoice() {
+  const btn = document.getElementById('voice-btn');
+  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+    addBubble("Voice input isn't supported in this browser — please type your answer.", 'system');
+    return;
+  }
+  if (state.listening) { state.recognition&&state.recognition.stop(); state.listening=false; btn.classList.remove('listening'); return; }
+  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec = new SR();
+  rec.continuous=false; rec.interimResults=false; rec.lang='en-CA';
+  rec.onresult = (e) => { const t=e.results[0][0].transcript; document.getElementById('text-input').value=t; autoResize(document.getElementById('text-input')); };
+  rec.onend = () => { state.listening=false; btn.classList.remove('listening'); };
+  rec.onerror = () => { state.listening=false; btn.classList.remove('listening'); };
+  state.recognition=rec; rec.start(); state.listening=true; btn.classList.add('listening');
+}
+
+window.onload = () => {
+  addBubble("Starting new job closure session…", 'system');
+  updateNote();
+  askNext(getNextFlow(), 800);
+};
+</script>
+</body>
+</html>
