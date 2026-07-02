@@ -117,6 +117,15 @@
   @keyframes bounce { 0%,80%,100%{transform:translateY(0)} 40%{transform:translateY(-6px)} }
   .submit-btn { width: 100%; padding: 14px; background: var(--telus-green); color: white; border: none; border-radius: var(--radius-sm); font-size: 15px; font-weight: 600; cursor: pointer; margin: 8px 0 4px; transition: background 0.15s; }
   .submit-btn:hover { background: #1e6600; }
+  .submit-btn:disabled { background: #888; cursor: not-allowed; }
+  .translating-banner {
+    background: var(--surface2); border: 1px solid var(--ai-bubble-border);
+    border-radius: var(--radius-sm); padding: 12px 16px;
+    font-size: 13px; color: var(--telus-purple); text-align: center;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .spin { animation: spin 1s linear infinite; display: inline-block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 </style>
 </head>
 <body>
@@ -158,7 +167,7 @@
       <path d="M5 10a7 7 0 0014 0M12 19v3M9 22h6"/>
     </svg>
   </button>
-  <textarea class="text-input" id="text-input" placeholder="Type your answer…" rows="1"
+  <textarea class="text-input" id="text-input" placeholder="Type or speak in any language…" rows="1"
     onkeydown="handleKey(event)" oninput="autoResize(this)"></textarea>
   <button class="send-btn" onclick="sendAnswer()">
     <svg viewBox="0 0 24 24"><path d="M2 21L23 12 2 3v7l15 2-15 2z"/></svg>
@@ -168,7 +177,7 @@
 <script>
 const state = {
   tier: 1, jobFamily: null, techType: null, closureStatus: null,
-  noteFields: {}, listening: false, recognition: null, complete: false
+  noteFields: {}, rawFields: {}, listening: false, recognition: null, complete: false
 };
 
 const flows = {
@@ -216,8 +225,50 @@ function injectFlowsAfterStatus(status) {
   flowQueue = [...t4, 't5_billing'];
 }
 
-function buildNote() {
-  const f = state.noteFields;
+// ── AI translation layer ───────────────────────────────────────────────────
+async function translateNoteFields(fields) {
+  const entries = Object.entries(fields);
+  if (entries.length === 0) return fields;
+
+  const fieldList = entries.map(([k,v]) => `${k}: ${v}`).join('\n');
+
+  const prompt = `You are a bilingual field services assistant for TELUS. 
+The following job closure note fields were captured from a technician who may have spoken in French, Spanish, Punjabi, Tagalog, or any other language.
+
+Your job:
+1. Translate every field value into clear, professional Canadian English
+2. Preserve all technical terms, numbers, measurements, and codes exactly (e.g. TDR readings, DSL rates, addresses, ticket numbers)
+3. Keep the same field keys exactly as provided
+4. Return ONLY a valid JSON object with the same keys and translated values — no preamble, no markdown, no explanation
+
+Fields to translate:
+${fieldList}
+
+Return format example:
+{"safety_incident": "No incidents", "customer_present": "Yes, customer was present"}`;
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-6",
+      max_tokens: 1000,
+      messages: [{ role: "user", content: prompt }]
+    })
+  });
+
+  const data = await response.json();
+  const raw = data.content[0].text.replace(/```json|```/g, '').trim();
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return fields;
+  }
+}
+
+// ── Note builder ───────────────────────────────────────────────────────────
+function buildNote(fields) {
+  const f = fields || state.noteFields;
   const lines = [];
   const job = [f.job_family, f.tech_type].filter(Boolean).map(s=>s.toUpperCase()).join(' / ');
   if (job) lines.push(`JOB TYPE: ${job}`);
@@ -262,6 +313,7 @@ function updateNote() {
   if (count > 0) document.getElementById('note-preview').classList.add('open');
 }
 
+// ── Chat rendering ─────────────────────────────────────────────────────────
 function addBubble(text, type) {
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
@@ -274,13 +326,14 @@ function addBubble(text, type) {
   }
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
+  return row;
 }
 
 function showTyping() {
   const chat = document.getElementById('chat');
   const row = document.createElement('div');
-  row.id = 'typing-indicator'; row.className = 'bubble-row';
-  row.innerHTML = `<div class="avatar">N</div><div class="bubble ai"><div class="typing"><span></span><span></span><span></span></div></div>`;
+  row.id='typing-indicator'; row.className='bubble-row';
+  row.innerHTML=`<div class="avatar">N</div><div class="bubble ai"><div class="typing"><span></span><span></span><span></span></div></div>`;
   chat.appendChild(row);
   chat.scrollTop = chat.scrollHeight;
 }
@@ -303,13 +356,13 @@ function removeChips() { const el=document.getElementById('chip-row'); if(el) el
 
 function updatePips(tier) {
   for (let i=1;i<=6;i++) {
-    const pip = document.getElementById(`pip${i}`);
-    if (i<tier) pip.className='tier-pip done';
-    else if (i===tier) pip.className='tier-pip active';
+    const pip=document.getElementById(`pip${i}`);
+    if(i<tier) pip.className='tier-pip done';
+    else if(i===tier) pip.className='tier-pip active';
     else pip.className='tier-pip';
   }
-  const labels = ['','Safety','Job type','Status','Test results','Billing','Notes'];
-  document.getElementById('tier-label').textContent = labels[tier]||'';
+  const labels=['','Safety','Job type','Status','Test results','Billing','Notes'];
+  document.getElementById('tier-label').textContent=labels[tier]||'';
 }
 
 function askNext(flowKey, delay=600) {
@@ -336,22 +389,22 @@ function processAnswer(text) {
   const key = flow.key;
   state.noteFields[key] = text;
   updateNote();
-  if (key==='job_family') state.jobFamily = text.toLowerCase().includes('repair')?'repair':'install';
-  if (key==='tech_type') state.techType = text.toLowerCase().includes('fibre')?'fibre':'copper';
+  if (key==='job_family') state.jobFamily=text.toLowerCase().includes('repair')?'repair':'install';
+  if (key==='tech_type') state.techType=text.toLowerCase().includes('fibre')?'fibre':'copper';
   if (key==='closure_status') {
-    const t = text.toLowerCase();
-    if (t.includes('incomplete')) state.closureStatus='incomplete';
-    else if (t.includes('cancelled by customer')||t.includes('customer')) state.closureStatus='cust_cancel';
-    else if (t.includes('system')) state.closureStatus='sys_cancel';
-    else if (t.includes('new appoint')) state.closureStatus='new_appt';
+    const t=text.toLowerCase();
+    if(t.includes('incomplete')) state.closureStatus='incomplete';
+    else if(t.includes('cancelled by customer')||t.includes('customer')) state.closureStatus='cust_cancel';
+    else if(t.includes('system')) state.closureStatus='sys_cancel';
+    else if(t.includes('new appoint')) state.closureStatus='new_appt';
     else state.closureStatus='completed';
     injectFlowsAfterStatus(state.closureStatus);
   }
-  if (key==='test_pair_results' && (text.toLowerCase().includes('no meter')||text.toLowerCase().includes('no test'))) {
+  if (key==='test_pair_results'&&(text.toLowerCase().includes('no meter')||text.toLowerCase().includes('no test'))) {
     flowQueue.unshift('t4c_no_test_reason');
   }
   if (key==='billing_charges') {
-    if (text.toLowerCase().includes('yes')) flowQueue.unshift('t5_billing_detail','t5_signature');
+    if(text.toLowerCase().includes('yes')) flowQueue.unshift('t5_billing_detail','t5_signature');
     else flowQueue.unshift('t5_no_charge');
   }
   askNext(getNextFlow());
@@ -360,9 +413,9 @@ function processAnswer(text) {
 function handleChip(label) { processAnswer(label); }
 
 function sendAnswer() {
-  const input = document.getElementById('text-input');
-  const val = input.value.trim();
-  if (!val) return;
+  const input=document.getElementById('text-input');
+  const val=input.value.trim();
+  if(!val) return;
   input.value=''; autoResize(input);
   processAnswer(val);
 }
@@ -370,56 +423,113 @@ function sendAnswer() {
 function handleKey(e) { if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendAnswer();} }
 function autoResize(el) { el.style.height='auto'; el.style.height=Math.min(el.scrollHeight,100)+'px'; }
 
+// ── Voice — language auto-detect ───────────────────────────────────────────
+function toggleVoice() {
+  const btn=document.getElementById('voice-btn');
+  if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)) {
+    addBubble("Voice input isn't supported in this browser — please type your answer.", 'system');
+    return;
+  }
+  if(state.listening) {
+    state.recognition&&state.recognition.stop();
+    state.listening=false; btn.classList.remove('listening'); return;
+  }
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  const rec=new SR();
+  rec.continuous=false; rec.interimResults=false;
+  // No lang specified — browser uses device language, accepts any language
+  rec.onresult=(e)=>{
+    const t=e.results[0][0].transcript;
+    document.getElementById('text-input').value=t;
+    autoResize(document.getElementById('text-input'));
+  };
+  rec.onend=()=>{ state.listening=false; btn.classList.remove('listening'); };
+  rec.onerror=()=>{ state.listening=false; btn.classList.remove('listening'); };
+  state.recognition=rec; rec.start();
+  state.listening=true; btn.classList.add('listening');
+}
+
+// ── Free-form ──────────────────────────────────────────────────────────────
 function showFreeForm() {
   state.complete=true; pendingFlowKey=null; updatePips(6);
-  setTimeout(() => {
+  setTimeout(()=>{
     showTyping();
-    setTimeout(() => {
+    setTimeout(()=>{
       removeTyping();
-      addBubble("Almost done! Two last things — completely open-ended, take as much space as you need.", 'ai');
-      const chat = document.getElementById('chat');
-      setTimeout(() => {
-        const card = document.createElement('div');
-        card.className = 'freeform-card';
-        card.innerHTML = `
+      addBubble("Almost done! Two last things — speak or type in any language, I'll handle the rest.", 'ai');
+      const chat=document.getElementById('chat');
+      setTimeout(()=>{
+        const card=document.createElement('div');
+        card.className='freeform-card';
+        card.innerHTML=`
           <div class="freeform-section">
             <div class="freeform-label">📝 Field notes</div>
-            <textarea class="freeform-textarea" id="ff-notes" placeholder="Describe what you encountered on site — anything unusual, context about the job, conditions, discoveries, workarounds…"></textarea>
+            <textarea class="freeform-textarea" id="ff-notes" placeholder="Describe what you encountered on site — any language is fine…"></textarea>
           </div>
           <div class="freeform-section">
             <div class="freeform-label dispatch">🚚 Instructions for dispatch or future tech</div>
-            <textarea class="freeform-textarea dispatch" id="ff-dispatch" placeholder="e.g. Ped cover is damaged — needs replacement. Cable run is tight at the NID. Return visit required with TDR meter…"></textarea>
+            <textarea class="freeform-textarea dispatch" id="ff-dispatch" placeholder="e.g. Ped cover damaged, needs replacement. Return visit required with TDR meter…"></textarea>
           </div>
           <button class="freeform-done-btn" onclick="submitFreeForm()">Done — finish note</button>
         `;
         chat.appendChild(card);
-        chat.scrollTop = chat.scrollHeight;
-      }, 300);
-    }, 900);
-  }, 500);
+        chat.scrollTop=chat.scrollHeight;
+      },300);
+    },900);
+  },500);
 }
 
-function submitFreeForm() {
-  const notes = document.getElementById('ff-notes').value.trim();
-  const dispatch = document.getElementById('ff-dispatch').value.trim();
-  if (notes) state.noteFields['field_notes'] = notes;
-  if (dispatch) state.noteFields['dispatch_instructions'] = dispatch;
-  updateNote();
-  const summary = [notes&&'✓ Field notes captured', dispatch&&'✓ Dispatch instructions captured'].filter(Boolean).join(' · ') || 'Both sections left blank';
-  addBubble(summary, 'user');
+async function submitFreeForm() {
+  const notes=document.getElementById('ff-notes').value.trim();
+  const dispatch=document.getElementById('ff-dispatch').value.trim();
+  if(notes) state.noteFields['field_notes']=notes;
+  if(dispatch) state.noteFields['dispatch_instructions']=dispatch;
+
+  // Disable button while translating
+  const doneBtn=document.querySelector('.freeform-done-btn');
+  if(doneBtn) doneBtn.disabled=true;
+
+  await runTranslationAndFinish();
+}
+
+async function runTranslationAndFinish() {
+  // Show translating banner in chat
+  const chat=document.getElementById('chat');
+  const banner=document.createElement('div');
+  banner.className='translating-banner';
+  banner.id='translating-banner';
+  banner.innerHTML=`<span class="spin">⟳</span> Translating to English and compiling your note…`;
+  chat.appendChild(banner);
+  chat.scrollTop=chat.scrollHeight;
+
+  try {
+    const translated=await translateNoteFields(state.noteFields);
+    state.noteFields=translated;
+    updateNote();
+    banner.remove();
+    const summary=[
+      Object.keys(translated).includes('field_notes')&&'✓ Field notes captured',
+      Object.keys(translated).includes('dispatch_instructions')&&'✓ Dispatch instructions captured'
+    ].filter(Boolean).join(' · ') || '✓ Note compiled';
+    addBubble(summary, 'user');
+  } catch(e) {
+    banner.remove();
+    addBubble("Translation unavailable — note saved in original language.", 'system');
+  }
+
   finishInterview();
 }
 
 function finishInterview() {
-  setTimeout(() => {
+  setTimeout(()=>{
     showTyping();
-    setTimeout(() => {
+    setTimeout(()=>{
       removeTyping();
-      addBubble("Your job note is complete and ready to submit. Tap the preview below to review it first.", 'ai');
-      const chat = document.getElementById('chat');
-      const btn = document.createElement('button');
+      addBubble("Your job note is complete and translated to English. Tap the preview below to review it before submitting.", 'ai');
+      const chat=document.getElementById('chat');
+      const btn=document.createElement('button');
       btn.className='submit-btn'; btn.textContent='Submit job note ✓';
-      btn.onclick = () => {
+      btn.onclick=()=>{
         btn.textContent='✓ Submitted successfully';
         btn.style.background='#1e6600';
         btn.disabled=true;
@@ -427,32 +537,17 @@ function finishInterview() {
         document.getElementById('note-preview').classList.add('open');
       };
       chat.appendChild(btn);
-      chat.scrollTop = chat.scrollHeight;
+      chat.scrollTop=chat.scrollHeight;
       document.getElementById('note-preview').classList.add('open');
-    }, 1000);
-  }, 400);
+    },1000);
+  },400);
 }
 
 function toggleNote() { document.getElementById('note-preview').classList.toggle('open'); }
 
-function toggleVoice() {
-  const btn = document.getElementById('voice-btn');
-  if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-    addBubble("Voice input isn't supported in this browser — please type your answer.", 'system');
-    return;
-  }
-  if (state.listening) { state.recognition&&state.recognition.stop(); state.listening=false; btn.classList.remove('listening'); return; }
-  const SR = window.SpeechRecognition||window.webkitSpeechRecognition;
-  const rec = new SR();
-  rec.continuous=false; rec.interimResults=false; rec.lang='en-CA';
-  rec.onresult = (e) => { const t=e.results[0][0].transcript; document.getElementById('text-input').value=t; autoResize(document.getElementById('text-input')); };
-  rec.onend = () => { state.listening=false; btn.classList.remove('listening'); };
-  rec.onerror = () => { state.listening=false; btn.classList.remove('listening'); };
-  state.recognition=rec; rec.start(); state.listening=true; btn.classList.add('listening');
-}
-
-window.onload = () => {
+window.onload=()=>{
   addBubble("Starting new job closure session…", 'system');
+  addBubble("Speak or type in any language — your note will be compiled in English.", 'system');
   updateNote();
   askNext(getNextFlow(), 800);
 };
